@@ -10,7 +10,7 @@ export default defineConfig({
       fileName: (format) => {
         if (format === 'es') return 'scroll-focus-polyfill.mjs';
         if (format === 'umd') return 'scroll-focus-polyfill.umd.js';
-        if (format === 'iife') return 'scroll-focus-polyfill.js';
+        return 'scroll-focus-polyfill.js';
       }
     },
     minify: 'terser',

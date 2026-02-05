@@ -42,7 +42,8 @@
 
     // Apply to all potentially scrollable elements
     const applyToExistingElements = () => {
-      const scrollableSelectors = ['pre', '[style*="overflow"]', '.scroll', '.scrollable'];
+      // Target common scrollable elements
+      const scrollableSelectors = ['pre', '.scroll', '.scrollable'];
 
       scrollableSelectors.forEach((selector) => {
         try {
@@ -62,7 +63,7 @@
             makeScrollableFocusable(node);
             // Check children as well
             if (node.querySelectorAll) {
-              node.querySelectorAll('pre, [style*="overflow"]').forEach(makeScrollableFocusable);
+              node.querySelectorAll('pre, .scroll, .scrollable').forEach(makeScrollableFocusable);
             }
           }
         });

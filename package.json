@@ -1,7 +1,7 @@
 {
   "name": "scroll-focus-polyfill",
   "version": "0.0.0-development",
-  "description": "A tiny polyfill for browsers that cannot focus a scrollable element (notably affecting keyboard accessibility of horizontally scrollable `&lt;pre>` blocks in some environments).",
+  "description": "A tiny polyfill for browsers that cannot focus a scrollable element (notably affecting keyboard accessibility of horizontally scrollable <pre> blocks in some environments).",
   "type": "module",
   "main": "./dist/scroll-focus-polyfill.umd.js",
   "module": "./dist/scroll-focus-polyfill.mjs",
@@ -21,6 +21,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "npm run build && node test.js",
     "lint": "biome lint ./src",
     "lint:fix": "biome lint --write ./src",
     "format": "biome format --write ./src",
