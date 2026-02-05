@@ -1,0 +1,3 @@
+module.exports = {
+  extends: '@th3s4mur41/release-config'
+};
