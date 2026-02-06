@@ -163,4 +163,13 @@
   } else if (typeof window !== 'undefined') {
     window.scrollFocusPolyfill = { applyPolyfill };
   }
+
+  // Make applyPolyfill available globally for ES module imports
+  if (typeof window !== 'undefined') {
+    window.__scrollFocusPolyfillApply = applyPolyfill;
+  }
 })();
+
+// ES module export - this will be available for build tools
+export const applyPolyfill =
+  (typeof window !== 'undefined' && window.__scrollFocusPolyfillApply) || (() => {});

@@ -83,13 +83,13 @@ const anotherExampleWithAReallyLongVariableNameThatRequiresHorizontalScrolling =
 
   <!-- Load the polyfill with debug enabled -->
   <script type="module">
-    import { applyPolyfill } from '../dist/scroll-focus-polyfill.mjs';
+    import { applyPolyfill } from './src/index.js';
     // Apply polyfill with debug logging enabled
     applyPolyfill({ debug: true });
   </script>
   
-  <!-- Alternative: Auto-run without options -->
-  <!-- <script src="../dist/scroll-focus-polyfill.js"></script> -->
+  <!-- Alternative: Auto-run without options (for production build) -->
+  <!-- <script src="./dist/scroll-focus-polyfill.js"></script> -->
   
   <!-- Alternative: Load from unpkg.com (CDN) -->
   <!-- <script src="https://unpkg.com/scroll-focus-polyfill/dist/scroll-focus-polyfill.js"></script> -->
