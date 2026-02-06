@@ -1,3 +1,3 @@
-module.exports = {
+export default {
   extends: '@th3s4mur41/release-config'
 };

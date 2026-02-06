@@ -77,11 +77,19 @@ const anotherExampleWithAReallyLongVariableNameThatRequiresHorizontalScrolling =
       <li>When a code block is focused, you should see a focus outline</li>
       <li>Use arrow keys to scroll horizontally within the focused code block</li>
       <li>This works even in browsers that don't normally allow scrollable elements to receive focus</li>
+      <li>Open the browser console to see debug logs (the polyfill is loaded with <code>debug: true</code> below)</li>
     </ol>
   </div>
 
-  <!-- Load the polyfill - it will run automatically -->
-  <script src="../dist/scroll-focus-polyfill.js"></script>
+  <!-- Load the polyfill with debug enabled -->
+  <script type="module">
+    import { applyPolyfill } from '../dist/scroll-focus-polyfill.mjs';
+    // Apply polyfill with debug logging enabled
+    applyPolyfill({ debug: true });
+  </script>
+  
+  <!-- Alternative: Auto-run without options -->
+  <!-- <script src="../dist/scroll-focus-polyfill.js"></script> -->
   
   <!-- Alternative: Load from unpkg.com (CDN) -->
   <!-- <script src="https://unpkg.com/scroll-focus-polyfill/dist/scroll-focus-polyfill.js"></script> -->

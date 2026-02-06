@@ -63,22 +63,41 @@ Or via CDN:
 <script src="https://unpkg.com/scroll-focus-polyfill/dist/scroll-focus-polyfill.js"></script>
 ```
 
-### Manual Usage
+### Manual Usage with Options
 
-If you want more control, you can manually trigger the polyfill:
+If you want more control, you can manually trigger the polyfill with custom options:
 
 ```javascript
 import { applyPolyfill } from 'scroll-focus-polyfill';
 
-// Apply the polyfill manually
+// Apply with default options
 applyPolyfill();
+
+// Apply with custom options
+applyPolyfill({
+  debug: false,       // Enable debug logging (default: false)
+  force: false,       // Force polyfill even if browser supports focus (default: false)
+  selectors: ['pre']  // CSS selectors for elements to make focusable (default: ['pre'])
+});
+
+// Example: Enable debug logging
+applyPolyfill({ debug: true });
+
+// Example: Apply to custom elements
+applyPolyfill({ selectors: ['pre', '.scrollable', '[data-scroll]'] });
 ```
+
+### Options
+
+- **`debug`** (boolean, default: `false`): Enable console logging for debugging
+- **`force`** (boolean, default: `false`): Force the polyfill to apply even if the browser natively supports focusing scrollable elements
+- **`selectors`** (array, default: `['pre']`): CSS selectors for elements that should be made focusable when they have scrollable content
 
 ## How it Works
 
-1. **Detection**: The polyfill first checks if the browser needs it by testing if scrollable elements can receive focus
-2. **Application**: If needed, it adds `tabindex="0"` to scrollable elements (like `<pre>` blocks)
-3. **Observation**: It monitors the DOM for new scrollable elements and applies the fix automatically
+1. **Detection**: The polyfill checks if the browser needs it by testing if a `<pre>` element with scrollable content can receive focus
+2. **Application**: If needed (or if `force: true`), it adds `tabindex="0"` to matching elements that have scrollable content
+3. **Observation**: It monitors the DOM for new elements and applies the fix automatically
 
 ## Browser Support
 
@@ -103,19 +122,32 @@ npm run build
 
 ### Linting & Formatting
 
+This project uses [Biome](https://biomejs.dev/) for both linting and formatting:
+
 ```bash
-npm run lint
-npm run format
+npm run lint        # Check code for issues
+npm run lint:fix    # Auto-fix linting and formatting issues
 ```
+
+### Development Server
+
+The project includes a Vite development server for testing the demo:
+
+```bash
+npm run dev         # Start development server (serves demo.html)
+npm run preview     # Preview production build
+```
+
+These commands start a local server that serves the `demo.html` file, allowing you to test the polyfill in a browser environment.
 
 ### Scripts
 
 - `npm run build` - Build the production bundle
-- `npm run dev` - Start development server
-- `npm run lint` - Lint the code
-- `npm run lint:fix` - Auto-fix linting issues
-- `npm run format` - Format the code
-- `npm run check` - Run both linting and formatting checks
+- `npm run dev` - Start development server for testing demo.html
+- `npm run preview` - Preview the production build
+- `npm run test` - Run build verification tests
+- `npm run lint` - Check code for linting and formatting issues
+- `npm run lint:fix` - Auto-fix linting and formatting issues
 
 ## Contributing
 

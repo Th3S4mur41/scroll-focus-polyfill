@@ -7,27 +7,71 @@
  */
 
 (() => {
+  // Default options
+  const defaultOptions = {
+    debug: false,
+    force: false,
+    selectors: ['pre'],
+  };
+
+  let currentOptions = { ...defaultOptions };
+
+  // Logger that only logs when debug is enabled
+  const log = (...args) => {
+    if (currentOptions.debug) {
+      console.log('[scroll-focus-polyfill]', ...args);
+    }
+  };
+
   // Check if the polyfill is needed
   function isPolyfillNeeded() {
-    // Test if the browser can focus scrollable elements
-    const testElement = document.createElement('div');
-    testElement.style.cssText =
-      'overflow: auto; width: 100px; height: 100px; position: absolute; left: -9999px;';
-    testElement.innerHTML = '<div style="width: 200px; height: 200px;"></div>';
-    document.body.appendChild(testElement);
+    log('Checking if polyfill is needed...');
 
-    testElement.focus();
-    const canFocus = document.activeElement === testElement;
+    // Create a fake scrollable element using pre and code
+    const test = document.createElement('pre');
+    test.style.width = '10px';
+    test.style.height = '10px';
+    test.style.overflow = 'auto';
 
-    document.body.removeChild(testElement);
+    // Add content to make it scrollable
+    const inner = document.createElement('code');
+    inner.style.display = 'block';
+    inner.style.width = '20px';
+    test.appendChild(inner);
 
-    return !canFocus;
+    // Hide from layout and accessibility
+    test.style.position = 'absolute';
+    test.style.left = '-9999px';
+    test.setAttribute('aria-hidden', 'true');
+
+    document.body.appendChild(test);
+
+    // Try focusing it
+    test.focus({ preventScroll: true });
+    const result = document.activeElement === test;
+
+    log(`Test element is focusable: ${result}`);
+
+    // Cleanup
+    document.body.removeChild(test);
+
+    return !result;
   }
 
   // Apply the polyfill
-  function applyPolyfill() {
-    if (!isPolyfillNeeded()) {
+  function applyPolyfill(options = {}) {
+    // Merge options with defaults
+    currentOptions = { ...defaultOptions, ...options };
+
+    log('Applying polyfill with options:', currentOptions);
+
+    if (!currentOptions.force && !isPolyfillNeeded()) {
+      log('Polyfill not needed, skipping');
       return;
+    }
+
+    if (currentOptions.force) {
+      log('Force option enabled, applying polyfill regardless');
     }
 
     // Make scrollable elements focusable by adding tabindex if needed
@@ -37,19 +81,21 @@
 
       if (hasOverflow && !element.hasAttribute('tabindex')) {
         element.setAttribute('tabindex', '0');
+        log('Added tabindex to element:', element.tagName.toLowerCase());
       }
     };
 
     // Apply to all potentially scrollable elements
     const applyToExistingElements = () => {
-      // Target common scrollable elements
-      const scrollableSelectors = ['pre', '.scroll', '.scrollable'];
+      log('Applying to existing elements with selectors:', currentOptions.selectors);
 
-      scrollableSelectors.forEach((selector) => {
+      currentOptions.selectors.forEach((selector) => {
         try {
-          document.querySelectorAll(selector).forEach(makeScrollableFocusable);
-        } catch (_e) {
-          // Ignore invalid selectors
+          const elements = document.querySelectorAll(selector);
+          log(`Found ${elements.length} elements matching "${selector}"`);
+          elements.forEach(makeScrollableFocusable);
+        } catch (e) {
+          log('Error with selector', selector, e);
         }
       });
     };
@@ -60,10 +106,26 @@
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType === 1) {
             // Element node
-            makeScrollableFocusable(node);
+            // Check if the node itself matches any selector
+            currentOptions.selectors.forEach((selector) => {
+              try {
+                if (node.matches?.(selector)) {
+                  makeScrollableFocusable(node);
+                }
+              } catch (_e) {
+                // Ignore invalid selectors
+              }
+            });
+
             // Check children as well
             if (node.querySelectorAll) {
-              node.querySelectorAll('pre, .scroll, .scrollable').forEach(makeScrollableFocusable);
+              currentOptions.selectors.forEach((selector) => {
+                try {
+                  node.querySelectorAll(selector).forEach(makeScrollableFocusable);
+                } catch (_e) {
+                  // Ignore invalid selectors
+                }
+              });
             }
           }
         });
@@ -82,11 +144,13 @@
       childList: true,
       subtree: true,
     });
+
+    log('Polyfill applied and observer started');
   }
 
   // Auto-run when imported as a module
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyPolyfill);
+    document.addEventListener('DOMContentLoaded', () => applyPolyfill());
   } else {
     applyPolyfill();
   }

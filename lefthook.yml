@@ -2,10 +2,7 @@ pre-commit:
   parallel: true
   commands:
     lint:
-      run: npm run lint
-      stage_fixed: true
-    format:
-      run: npm run format
+      run: npm run lint:fix
       stage_fixed: true
 
 commit-msg:

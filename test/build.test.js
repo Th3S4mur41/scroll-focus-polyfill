@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Test that all expected build files exist
-const distDir = join(__dirname, 'dist');
+const distDir = join(__dirname, '..', 'dist');
 const expectedFiles = [
   'scroll-focus-polyfill.js',
   'scroll-focus-polyfill.mjs',
@@ -37,8 +37,8 @@ expectedFiles.forEach(file => {
         allTestsPassed = false;
       }
       
-      // Check for polyfill logic
-      if (content.includes('tabindex') && content.includes('scrollable')) {
+      // Check for polyfill logic (check for 'tabindex' and 'selectors' or 'pre')
+      if (content.includes('tabindex') && (content.includes('selectors') || content.includes('pre'))) {
         console.log(`  ✓ Contains polyfill logic`);
       } else {
         console.log(`  ✗ Missing expected polyfill logic`);

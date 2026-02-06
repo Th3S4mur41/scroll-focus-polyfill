@@ -31,9 +31,6 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Check formatting
-        run: npx biome check ./src
-
       - name: Build
         run: npm run build
 
