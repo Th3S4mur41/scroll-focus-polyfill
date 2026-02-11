@@ -19,6 +19,10 @@ jobs:
   lint-pr:
     runs-on: ubuntu-latest
 
+    permissions:
+      pull-requests: write
+      contents: read
+
     steps:
       - name: '✅ Lint PR'
         uses: Namchee/conventional-pr@v0.15.6
