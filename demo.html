@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll Focus Polyfill Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+    }
+    
+    h1 {
+      color: #333;
+    }
+    
+    .demo-section {
+      margin: 40px 0;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    
+    pre {
+      overflow-x: auto;
+      background: #282c34;
+      color: #abb2bf;
+      padding: 15px;
+      border-radius: 4px;
+      max-width: 100%;
+    }
+    
+    code {
+      font-family: 'Courier New', monospace;
+    }
+    
+    .info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 10px 15px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scroll Focus Polyfill Demo</h1>
+  
+  <div class="info">
+    <strong>Try it:</strong> Press Tab to navigate to the code block below. 
+    In browsers that need the polyfill, you should be able to focus the scrollable area.
+  </div>
+
+  <div class="demo-section">
+    <h2>Horizontally Scrollable Code Block</h2>
+    <p>This code block is intentionally wide to demonstrate horizontal scrolling:</p>
+    
+    <pre><code>const myVeryLongFunctionNameThatExceedsTheContainerWidth = () => {
+  console.log('This line is very long and will require horizontal scrolling to see it completely');
+  return 'This demonstrates the scroll-focus polyfill making this element keyboard accessible';
+};</code></pre>
+  </div>
+
+  <div class="demo-section">
+    <h2>Another Scrollable Example</h2>
+    <pre><code>// Another example with a very long line of code
+const anotherExampleWithAReallyLongVariableNameThatRequiresHorizontalScrolling = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';</code></pre>
+  </div>
+
+  <div class="demo-section">
+    <h2>How to Test</h2>
+    <ol>
+      <li>Press <kbd>Tab</kbd> to navigate through the page</li>
+      <li>When a code block is focused, you should see a focus outline</li>
+      <li>Use arrow keys to scroll horizontally within the focused code block</li>
+      <li>This works even in browsers that don't normally allow scrollable elements to receive focus</li>
+      <li>Open the browser console to see debug logs (the polyfill is loaded with <code>debug: true</code> below)</li>
+    </ol>
+  </div>
+
+  <div class="demo-section">
+    <h2>Usage Examples</h2>
+    <p>This demo uses the manual import with debug enabled. You can also use:</p>
+    
+    <h3>1. Auto-execute (simplest)</h3>
+    <pre><code>&lt;!-- Just reference the package --&gt;
+&lt;script src="https://unpkg.com/scroll-focus-polyfill"&gt;&lt;/script&gt;</code></pre>
+    
+    <h3>2. Force mode via data attribute</h3>
+    <pre><code>&lt;!-- Always applies, skips detection --&gt;
+&lt;script src="https://unpkg.com/scroll-focus-polyfill" data-force="true"&gt;&lt;/script&gt;</code></pre>
+    
+    <h3>3. With multiple data attributes</h3>
+    <pre><code>&lt;!-- Configure via data attributes --&gt;
+&lt;script src="https://unpkg.com/scroll-focus-polyfill" 
+        data-debug="true"
+        data-selectors="pre, .scrollable"&gt;&lt;/script&gt;</code></pre>
+    
+    <h3>4. Function export for full control (like this demo)</h3>
+    <pre><code>&lt;script type="module"&gt;
+  import { applyPolyfill } from 'scroll-focus-polyfill/fn';
+  applyPolyfill({ debug: true });
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <!-- Load the polyfill with debug enabled using function export -->
+  <script type="module">
+    import { applyPolyfill } from './src/index.js';
+    // Apply polyfill with debug logging enabled
+    applyPolyfill({ debug: true });
+  </script>
+  
+  <!-- Alternative examples (commented out): -->
+  
+  <!-- Auto-execute without options -->
+  <!-- <script src="https://unpkg.com/scroll-focus-polyfill"></script> -->
+  
+  <!-- Force mode via data attribute -->
+  <!-- <script src="https://unpkg.com/scroll-focus-polyfill" data-force="true"></script> -->
+  
+  <!-- With data attributes -->
+  <!-- <script src="https://unpkg.com/scroll-focus-polyfill" data-debug="true"></script> -->
+</body>
+</html>
