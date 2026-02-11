@@ -81,17 +81,50 @@ const anotherExampleWithAReallyLongVariableNameThatRequiresHorizontalScrolling =
     </ol>
   </div>
 
-  <!-- Load the polyfill with debug enabled -->
+  <div class="demo-section">
+    <h2>Usage Examples</h2>
+    <p>This demo uses the manual import with debug enabled. You can also use:</p>
+    
+    <h3>1. Auto-execute (simplest)</h3>
+    <pre><code>&lt;!-- Just reference the package --&gt;
+&lt;script src="https://unpkg.com/scroll-focus-polyfill"&gt;&lt;/script&gt;</code></pre>
+    
+    <h3>2. Force mode (always apply)</h3>
+    <pre><code>&lt;!-- Always applies, skips detection --&gt;
+&lt;script src="https://unpkg.com/scroll-focus-polyfill/force"&gt;&lt;/script&gt;</code></pre>
+    
+    <h3>3. With data attributes</h3>
+    <pre><code>&lt;!-- Configure via data attributes --&gt;
+&lt;script src="https://unpkg.com/scroll-focus-polyfill" 
+        data-debug="true"
+        data-selectors="pre, .scrollable"&gt;&lt;/script&gt;</code></pre>
+    
+    <h3>4. Manual control (like this demo)</h3>
+    <pre><code>&lt;script type="module"&gt;
+  import { applyPolyfill } from 'scroll-focus-polyfill/manual';
+  applyPolyfill({ debug: true });
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <!-- Load the polyfill with debug enabled using manual import -->
   <script type="module">
     import { applyPolyfill } from './src/index.js';
     // Apply polyfill with debug logging enabled
     applyPolyfill({ debug: true });
   </script>
   
-  <!-- Alternative: Auto-run without options (for production build) -->
+  <!-- Alternative examples (commented out): -->
+  
+  <!-- Auto-execute without options -->
   <!-- <script src="./dist/scroll-focus-polyfill.js"></script> -->
   
-  <!-- Alternative: Load from unpkg.com (CDN) -->
-  <!-- <script src="https://unpkg.com/scroll-focus-polyfill/dist/scroll-focus-polyfill.js"></script> -->
+  <!-- Force mode -->
+  <!-- <script src="./dist/scroll-focus-polyfill.force.js"></script> -->
+  
+  <!-- With data attributes -->
+  <!-- <script src="./dist/scroll-focus-polyfill.js" data-debug="true"></script> -->
+  
+  <!-- Load from unpkg.com (CDN) -->
+  <!-- <script src="https://unpkg.com/scroll-focus-polyfill"></script> -->
 </body>
 </html>
