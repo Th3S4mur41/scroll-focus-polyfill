@@ -89,11 +89,11 @@ const anotherExampleWithAReallyLongVariableNameThatRequiresHorizontalScrolling =
     <pre><code>&lt;!-- Just reference the package --&gt;
 &lt;script src="https://unpkg.com/scroll-focus-polyfill"&gt;&lt;/script&gt;</code></pre>
     
-    <h3>2. Force mode (always apply)</h3>
+    <h3>2. Force mode via data attribute</h3>
     <pre><code>&lt;!-- Always applies, skips detection --&gt;
-&lt;script src="https://unpkg.com/scroll-focus-polyfill/force"&gt;&lt;/script&gt;</code></pre>
+&lt;script src="https://unpkg.com/scroll-focus-polyfill" data-force="true"&gt;&lt;/script&gt;</code></pre>
     
-    <h3>3. With data attributes</h3>
+    <h3>3. With multiple data attributes</h3>
     <pre><code>&lt;!-- Configure via data attributes --&gt;
 &lt;script src="https://unpkg.com/scroll-focus-polyfill" 
         data-debug="true"
@@ -116,15 +116,12 @@ const anotherExampleWithAReallyLongVariableNameThatRequiresHorizontalScrolling =
   <!-- Alternative examples (commented out): -->
   
   <!-- Auto-execute without options -->
-  <!-- <script src="./dist/scroll-focus-polyfill.js"></script> -->
+  <!-- <script src="https://unpkg.com/scroll-focus-polyfill"></script> -->
   
-  <!-- Force mode -->
-  <!-- <script src="./dist/scroll-focus-polyfill.force.js"></script> -->
+  <!-- Force mode via data attribute -->
+  <!-- <script src="https://unpkg.com/scroll-focus-polyfill" data-force="true"></script> -->
   
   <!-- With data attributes -->
-  <!-- <script src="./dist/scroll-focus-polyfill.js" data-debug="true"></script> -->
-  
-  <!-- Load from unpkg.com (CDN) -->
-  <!-- <script src="https://unpkg.com/scroll-focus-polyfill"></script> -->
+  <!-- <script src="https://unpkg.com/scroll-focus-polyfill" data-debug="true"></script> -->
 </body>
 </html>

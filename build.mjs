@@ -4,7 +4,6 @@ import { resolve } from 'path';
 const entries = [
   { name: 'scroll-focus-polyfill', input: 'src/auto.js' },
   { name: 'scroll-focus-polyfill.manual', input: 'src/index.js' },
-  { name: 'scroll-focus-polyfill.force', input: 'src/force.js' },
 ];
 
 async function buildAll() {

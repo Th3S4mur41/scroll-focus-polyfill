@@ -24,9 +24,6 @@ You can import the polyfill directly from unpkg.com without any build step:
 <!-- Auto-execute version (detects and applies automatically) -->
 <script src="https://unpkg.com/scroll-focus-polyfill"></script>
 
-<!-- Or specify the file explicitly -->
-<script src="https://unpkg.com/scroll-focus-polyfill/dist/scroll-focus-polyfill.js"></script>
-
 <!-- ES Module version -->
 <script type="module">
   import 'https://unpkg.com/scroll-focus-polyfill';
@@ -42,7 +39,6 @@ The simplest way to use the polyfill is to just import it. It will automatically
 #### HTML Script Tag
 
 ```html
-<!-- Just reference the package - no need to specify the file! -->
 <script src="https://unpkg.com/scroll-focus-polyfill"></script>
 ```
 
@@ -83,22 +79,8 @@ You can configure the polyfill using data attributes on the script tag:
 <!-- Combine multiple options -->
 <script src="https://unpkg.com/scroll-focus-polyfill" 
         data-debug="true" 
+        data-force="true"
         data-selectors="pre, .code-block"></script>
-```
-
-### Force Mode (Always Apply)
-
-If you want to always apply the polyfill regardless of browser support, use the force variant:
-
-```html
-<!-- Using the force variant -->
-<script src="https://unpkg.com/scroll-focus-polyfill/force"></script>
-```
-
-Or in JavaScript:
-
-```javascript
-import 'scroll-focus-polyfill/force';
 ```
 
 ### Manual Control
@@ -134,13 +116,12 @@ applyPolyfill({
 
 ## Entry Points
 
-The package provides three entry points for different use cases:
+The package provides two entry points for different use cases:
 
-| Entry Point | Auto-Execute | Force Mode | Use Case |
-|------------|--------------|------------|----------|
-| `scroll-focus-polyfill` (default) | ✅ Yes | ❌ No | Quick plug-and-play |
-| `scroll-focus-polyfill/manual` | ❌ No | ❌ No | Full control over application |
-| `scroll-focus-polyfill/force` | ✅ Yes | ✅ Yes | Always apply, skip detection |
+| Entry Point | Auto-Execute | Use Case |
+|------------|--------------|----------|
+| `scroll-focus-polyfill` (default) | ✅ Yes | Quick plug-and-play with automatic detection |
+| `scroll-focus-polyfill/manual` | ❌ No | Full control over application timing and options |
 
 ### Examples
 
@@ -152,8 +133,9 @@ import 'scroll-focus-polyfill';
 import { applyPolyfill } from 'scroll-focus-polyfill/manual';
 applyPolyfill({ debug: true });
 
-// Force: Auto-execute without detection
-import 'scroll-focus-polyfill/force';
+// Force mode via manual import
+import { applyPolyfill } from 'scroll-focus-polyfill/manual';
+applyPolyfill({ force: true });
 ```
 
 ### HTML Script Tag Usage
@@ -162,8 +144,8 @@ import 'scroll-focus-polyfill/force';
 <!-- Default: Auto-execute with detection -->
 <script src="https://unpkg.com/scroll-focus-polyfill"></script>
 
-<!-- Force: Auto-execute, always apply -->
-<script src="https://unpkg.com/scroll-focus-polyfill/force"></script>
+<!-- Force mode via data attribute -->
+<script src="https://unpkg.com/scroll-focus-polyfill" data-force="true"></script>
 
 <!-- With options via data attributes -->
 <script src="https://unpkg.com/scroll-focus-polyfill" 
@@ -171,7 +153,7 @@ import 'scroll-focus-polyfill/force';
         data-selectors="pre, .scrollable"></script>
 ```
 
-### Options
+## Options
 
 - **`debug`** (boolean, default: `false`): Enable console logging for debugging
 - **`force`** (boolean, default: `false`): Force the polyfill to apply even if the browser natively supports focusing scrollable elements

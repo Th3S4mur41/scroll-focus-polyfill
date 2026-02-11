@@ -20,10 +20,6 @@ const expectedFiles = [
   'scroll-focus-polyfill.manual.js',
   'scroll-focus-polyfill.manual.mjs',
   'scroll-focus-polyfill.manual.umd.js',
-  // Force version
-  'scroll-focus-polyfill.force.js',
-  'scroll-focus-polyfill.force.mjs',
-  'scroll-focus-polyfill.force.umd.js',
 ];
 
 console.log('Testing build outputs...\n');
