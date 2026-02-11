@@ -1,5 +1,8 @@
 name: Checks
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
@@ -7,6 +10,10 @@ on:
   pull_request:
     branches:
       - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-build:
