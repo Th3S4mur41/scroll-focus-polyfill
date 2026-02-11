@@ -1,5 +1,10 @@
 # scroll-focus-polyfill
 
+![Package version](https://img.shields.io/github/package-json/v/Th3S4mur41/scroll-focus-polyfill)
+![GitHub last commit](https://img.shields.io/github/last-commit/Th3S4mur41/scroll-focus-polyfill)
+![Release](https://github.com/Th3S4mur41/scroll-focus-polyfill/actions/workflows/release.yml/badge.svg?branch=main)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Th3S4mur41/scroll-focus-polyfill/badge)](https://scorecard.dev/viewer/?uri=github.com/Th3S4mur41/scroll-focus-polyfill)
+
 A tiny polyfill for browsers that cannot focus a scrollable element (notably affecting keyboard accessibility of horizontally scrollable `<pre>` blocks in some environments).
 
 ## Why?
