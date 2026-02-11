@@ -26,3 +26,7 @@ updates:
       interval: 'daily'
       time: '00:00'
       timezone: 'Europe/Berlin'
+    groups:
+      artifacts:
+        patterns:
+          - 'actions/*-artifact'
