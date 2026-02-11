@@ -85,11 +85,11 @@ You can configure the polyfill using data attributes on the script tag:
 
 ### Manual Control
 
-If you want full control over when and how the polyfill is applied, use the manual variant:
+If you want full control over when and how the polyfill is applied, use the function export:
 
 ```javascript
-// Import the manual variant (does NOT auto-execute)
-import { applyPolyfill } from 'scroll-focus-polyfill/manual';
+// Import the function export (does NOT auto-execute)
+import { applyPolyfill } from 'scroll-focus-polyfill/fn';
 
 // Apply with default options
 applyPolyfill();
@@ -121,7 +121,7 @@ The package provides two entry points for different use cases:
 | Entry Point | Auto-Execute | Use Case |
 |------------|--------------|----------|
 | `scroll-focus-polyfill` (default) | ✅ Yes | Quick plug-and-play with automatic detection |
-| `scroll-focus-polyfill/manual` | ❌ No | Full control over application timing and options |
+| `scroll-focus-polyfill/fn` | ❌ No | Full control over application timing and options |
 
 ### Examples
 
@@ -129,12 +129,12 @@ The package provides two entry points for different use cases:
 // Default: Auto-execute with detection
 import 'scroll-focus-polyfill';
 
-// Manual: No auto-execute, full control
-import { applyPolyfill } from 'scroll-focus-polyfill/manual';
+// Function export: No auto-execute, full control
+import { applyPolyfill } from 'scroll-focus-polyfill/fn';
 applyPolyfill({ debug: true });
 
-// Force mode via manual import
-import { applyPolyfill } from 'scroll-focus-polyfill/manual';
+// Force mode via function export
+import { applyPolyfill } from 'scroll-focus-polyfill/fn';
 applyPolyfill({ force: true });
 ```
 
@@ -172,52 +172,17 @@ This polyfill works in all modern browsers and will only activate if needed. It 
 - `MutationObserver` for DOM monitoring
 - Standard DOM APIs for element detection
 
-## Development
-
-### Setup
-
-```bash
-npm install
-```
-
-### Build
-
-```bash
-npm run build
-```
-
-### Linting & Formatting
-
-This project uses [Biome](https://biomejs.dev/) for both linting and formatting:
-
-```bash
-npm run lint        # Check code for issues
-npm run lint:fix    # Auto-fix linting and formatting issues
-```
-
-### Development Server
-
-The project includes a Vite development server for testing the demo:
-
-```bash
-npm run dev         # Start development server (serves demo.html)
-npm run preview     # Preview production build
-```
-
-These commands start a local server that serves the `demo.html` file, allowing you to test the polyfill in a browser environment.
-
-### Scripts
-
-- `npm run build` - Build the production bundle
-- `npm run dev` - Start development server for testing demo.html
-- `npm run preview` - Preview the production build
-- `npm run test` - Run build verification tests
-- `npm run lint` - Check code for linting and formatting issues
-- `npm run lint:fix` - Auto-fix linting and formatting issues
-
 ## Contributing
 
-Contributions are welcome! This project uses:
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information about:
+
+- Development setup
+- Available scripts
+- Commit guidelines
+- Pull request process
+- Code style
+
+This project uses:
 
 - **Vite** for building and bundling
 - **Biome** for linting and formatting

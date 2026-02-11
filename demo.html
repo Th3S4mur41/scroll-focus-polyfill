@@ -99,14 +99,14 @@ const anotherExampleWithAReallyLongVariableNameThatRequiresHorizontalScrolling =
         data-debug="true"
         data-selectors="pre, .scrollable"&gt;&lt;/script&gt;</code></pre>
     
-    <h3>4. Manual control (like this demo)</h3>
+    <h3>4. Function export for full control (like this demo)</h3>
     <pre><code>&lt;script type="module"&gt;
-  import { applyPolyfill } from 'scroll-focus-polyfill/manual';
+  import { applyPolyfill } from 'scroll-focus-polyfill/fn';
   applyPolyfill({ debug: true });
 &lt;/script&gt;</code></pre>
   </div>
 
-  <!-- Load the polyfill with debug enabled using manual import -->
+  <!-- Load the polyfill with debug enabled using function export -->
   <script type="module">
     import { applyPolyfill } from './src/index.js';
     // Apply polyfill with debug logging enabled

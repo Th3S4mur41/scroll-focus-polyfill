@@ -3,7 +3,7 @@ import { resolve } from 'path';
 
 const entries = [
   { name: 'scroll-focus-polyfill', input: 'src/auto.js' },
-  { name: 'scroll-focus-polyfill.manual', input: 'src/index.js' },
+  { name: 'scroll-focus-polyfill.fn', input: 'src/index.js' },
 ];
 
 async function buildAll() {

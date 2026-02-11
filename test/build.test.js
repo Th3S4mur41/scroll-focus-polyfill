@@ -16,10 +16,10 @@ const expectedFiles = [
   'scroll-focus-polyfill.js',
   'scroll-focus-polyfill.mjs',
   'scroll-focus-polyfill.umd.js',
-  // Manual version
-  'scroll-focus-polyfill.manual.js',
-  'scroll-focus-polyfill.manual.mjs',
-  'scroll-focus-polyfill.manual.umd.js',
+  // Function export version
+  'scroll-focus-polyfill.fn.js',
+  'scroll-focus-polyfill.fn.mjs',
+  'scroll-focus-polyfill.fn.umd.js',
 ];
 
 console.log('Testing build outputs...\n');

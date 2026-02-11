@@ -13,11 +13,11 @@
       "require": "./dist/scroll-focus-polyfill.umd.js",
       "default": "./dist/scroll-focus-polyfill.js"
     },
-    "./manual": {
-      "browser": "./dist/scroll-focus-polyfill.manual.js",
-      "import": "./dist/scroll-focus-polyfill.manual.mjs",
-      "require": "./dist/scroll-focus-polyfill.manual.umd.js",
-      "default": "./dist/scroll-focus-polyfill.manual.js"
+    "./fn": {
+      "browser": "./dist/scroll-focus-polyfill.fn.js",
+      "import": "./dist/scroll-focus-polyfill.fn.mjs",
+      "require": "./dist/scroll-focus-polyfill.fn.umd.js",
+      "default": "./dist/scroll-focus-polyfill.fn.js"
     }
   },
   "files": [
