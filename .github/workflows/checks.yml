@@ -16,6 +16,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: '✅ Lint PR'
+        uses: Namchee/conventional-pr@v0.15.6
+        with:
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+          label: '⁉️ invalid'
+          branch_pattern: ''
+
+  dependency-review:
+    name: '⛓️ Dependency Review'
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' }}
+
+    permissions:
+      pull-requests: write
+      contents: write
+
+    steps:
+      - name: '☁️ Checkout repository'
+        uses: actions/checkout@v6
+
+      - name: '🛡️ Dependency Review'
+        uses: actions/dependency-review-action@v4.8.2          
+
   lint-and-build:
     runs-on: ubuntu-latest
     permissions:
