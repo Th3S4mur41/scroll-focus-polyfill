@@ -12,9 +12,18 @@ const __dirname = dirname(__filename);
 // Test that all expected build files exist
 const distDir = join(__dirname, '..', 'dist');
 const expectedFiles = [
+  // Default (auto-execute) version
   'scroll-focus-polyfill.js',
   'scroll-focus-polyfill.mjs',
-  'scroll-focus-polyfill.umd.js'
+  'scroll-focus-polyfill.umd.js',
+  // Manual version
+  'scroll-focus-polyfill.manual.js',
+  'scroll-focus-polyfill.manual.mjs',
+  'scroll-focus-polyfill.manual.umd.js',
+  // Force version
+  'scroll-focus-polyfill.force.js',
+  'scroll-focus-polyfill.force.mjs',
+  'scroll-focus-polyfill.force.umd.js',
 ];
 
 console.log('Testing build outputs...\n');

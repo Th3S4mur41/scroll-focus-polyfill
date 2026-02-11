@@ -12,6 +12,18 @@
       "import": "./dist/scroll-focus-polyfill.mjs",
       "require": "./dist/scroll-focus-polyfill.umd.js",
       "default": "./dist/scroll-focus-polyfill.js"
+    },
+    "./manual": {
+      "browser": "./dist/scroll-focus-polyfill.manual.js",
+      "import": "./dist/scroll-focus-polyfill.manual.mjs",
+      "require": "./dist/scroll-focus-polyfill.manual.umd.js",
+      "default": "./dist/scroll-focus-polyfill.manual.js"
+    },
+    "./force": {
+      "browser": "./dist/scroll-focus-polyfill.force.js",
+      "import": "./dist/scroll-focus-polyfill.force.mjs",
+      "require": "./dist/scroll-focus-polyfill.force.umd.js",
+      "default": "./dist/scroll-focus-polyfill.force.js"
     }
   },
   "files": [
@@ -19,7 +31,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node build.mjs",
     "preview": "vite preview",
     "test": "npm run build && node test/build.test.js",
     "lint": "npx @biomejs/biome check ./src",
