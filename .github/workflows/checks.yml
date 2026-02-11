@@ -26,6 +26,7 @@ jobs:
           access_token: ${{ secrets.GITHUB_TOKEN }}
           label: '⁉️ invalid'
           branch_pattern: ''
+          issue: false
 
   dependency-review:
     name: '⛓️ Dependency Review'
