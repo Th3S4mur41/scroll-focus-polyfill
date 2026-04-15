@@ -1,0 +1,13 @@
+# .github/mushin.yml
+
+# Highest semver level to auto-merge: patch | minor | major
+# Default: minor
+highest_version_to_merge: minor
+
+# Merge PRs when the update type cannot be determined by parsing Dependabot metadata.
+# Default: false
+merge_unknown: false
+
+# Git merge method: merge | squash | rebase
+# Default: squash
+merge_method: squash
