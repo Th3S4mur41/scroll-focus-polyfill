@@ -14,20 +14,20 @@ const defaultOptions = {
   selectors: ['pre'],
 };
 
-let currentOptions = { ...defaultOptions };
-
 // Marks elements whose tabindex was added by this polyfill, so it can be safely removed
 const MARKER = 'data-scroll-focus-polyfill';
 
 // Logger that only logs when debug is enabled
-const log = (...args) => {
-  if (currentOptions.debug) {
-    console.log('[scroll-focus-polyfill]', ...args);
-  }
+const createLogger = (options) => {
+  return (...args) => {
+    if (options.debug) {
+      console.log('[scroll-focus-polyfill]', ...args);
+    }
+  };
 };
 
 // Check if the polyfill is needed
-function isPolyfillNeeded() {
+function isPolyfillNeeded(log) {
   log('Checking if polyfill is needed...');
 
   // Create a fake scrollable element using pre and code
@@ -63,17 +63,18 @@ function isPolyfillNeeded() {
 
 // Apply the polyfill
 export function applyPolyfill(options = {}) {
-  // Merge options with defaults
-  currentOptions = { ...defaultOptions, ...options };
+  // Options are per invocation so a later call cannot retarget this instance
+  const settings = { ...defaultOptions, ...options };
+  const log = createLogger(settings);
 
-  log('Applying polyfill with options:', currentOptions);
+  log('Applying polyfill with options:', settings);
 
-  if (!currentOptions.force && !isPolyfillNeeded()) {
+  if (!settings.force && !isPolyfillNeeded(log)) {
     log('Polyfill not needed, skipping');
     return { refresh: () => {} };
   }
 
-  if (currentOptions.force) {
+  if (settings.force) {
     log('Force option enabled, applying polyfill regardless');
   }
 
@@ -91,7 +92,7 @@ export function applyPolyfill(options = {}) {
   // One observer for all targets: cost scales with element count, not observer count
   const observedElements = new WeakSet();
   const resizeObserver =
-    currentOptions.observeResize && typeof ResizeObserver !== 'undefined'
+    settings.observeResize && typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(scheduleReevaluation)
       : null;
 
@@ -137,7 +138,7 @@ export function applyPolyfill(options = {}) {
 
   // Run fn on root and any descendant matching the configured selectors
   const forEachMatch = (root, fn) => {
-    currentOptions.selectors.forEach((selector) => {
+    settings.selectors.forEach((selector) => {
       try {
         if (root.matches?.(selector)) {
           fn(root);
@@ -150,7 +151,7 @@ export function applyPolyfill(options = {}) {
   };
 
   const matchesAnySelector = (element) =>
-    currentOptions.selectors.some((selector) => {
+    settings.selectors.some((selector) => {
       try {
         return element.matches(selector);
       } catch (e) {
@@ -174,13 +175,19 @@ export function applyPolyfill(options = {}) {
 
   // Apply to all potentially scrollable elements
   const applyToExistingElements = () => {
-    log('Applying to existing elements with selectors:', currentOptions.selectors);
+    log('Applying to existing elements with selectors:', settings.selectors);
     forEachMatch(document.documentElement, makeScrollableFocusable);
   };
 
   // Observe DOM changes and apply polyfill to new elements
   const observer = new MutationObserver((mutations) => {
     const pending = new Set();
+
+    // Drop queued matches first, otherwise evaluating one would re-observe a detached node
+    const releaseElement = (element) => {
+      pending.delete(element);
+      untrackSize(element);
+    };
 
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
@@ -190,13 +197,12 @@ export function applyPolyfill(options = {}) {
       });
 
       mutation.removedNodes.forEach((node) => {
-        if (node.nodeType === 1) {
-          // Drop any queued match first, otherwise evaluating it would re-observe a detached node
-          forEachMatch(node, (element) => {
-            pending.delete(element);
-            untrackSize(element);
-          });
-        }
+        if (node.nodeType !== 1) return;
+
+        // Walk every element, not just current matches: an element that stopped matching
+        // before detaching would otherwise stay observed forever
+        releaseElement(node);
+        node.querySelectorAll?.('*').forEach(releaseElement);
       });
 
       collectMatchingAncestors(mutation.target, pending);
