@@ -191,7 +191,11 @@ export function applyPolyfill(options = {}) {
 
       mutation.removedNodes.forEach((node) => {
         if (node.nodeType === 1) {
-          forEachMatch(node, untrackSize);
+          // Drop any queued match first, otherwise evaluating it would re-observe a detached node
+          forEachMatch(node, (element) => {
+            pending.delete(element);
+            untrackSize(element);
+          });
         }
       });
 
