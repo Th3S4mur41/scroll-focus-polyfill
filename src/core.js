@@ -92,9 +92,12 @@ export function applyPolyfill(options = {}) {
     }
 
     if (element.hasAttribute(MARKER)) {
-      element.removeAttribute('tabindex');
+      // The app may have taken over the value since we set it; in that case leave it alone
+      if (element.getAttribute('tabindex') === '0') {
+        element.removeAttribute('tabindex');
+        log('Removed tabindex from element:', element.tagName.toLowerCase());
+      }
       element.removeAttribute(MARKER);
-      log('Removed tabindex from element:', element.tagName.toLowerCase());
     }
   };
 
