@@ -10,6 +10,7 @@
 const defaultOptions = {
   debug: false,
   force: false,
+  observeResize: true,
   selectors: ['pre'],
 };
 
@@ -69,16 +70,49 @@ export function applyPolyfill(options = {}) {
 
   if (!currentOptions.force && !isPolyfillNeeded()) {
     log('Polyfill not needed, skipping');
-    return;
+    return { refresh: () => {} };
   }
 
   if (currentOptions.force) {
     log('Force option enabled, applying polyfill regardless');
   }
 
+  let rafId = null;
+  // Coalesce bursts of resize notifications into a single pass per frame
+  function scheduleReevaluation() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      log('Re-evaluating elements after resize');
+      applyToExistingElements();
+    });
+  }
+
+  // One observer for all targets: cost scales with element count, not observer count
+  const observedElements = new WeakSet();
+  const resizeObserver =
+    currentOptions.observeResize && typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(scheduleReevaluation)
+      : null;
+
+  const trackSize = (element) => {
+    if (!resizeObserver || observedElements.has(element)) return;
+    observedElements.add(element);
+    resizeObserver.observe(element);
+  };
+
+  // Detached targets would otherwise be retained by the observer
+  const untrackSize = (element) => {
+    if (!resizeObserver || !observedElements.has(element)) return;
+    observedElements.delete(element);
+    resizeObserver.unobserve(element);
+  };
+
   // Add tabindex when an element overflows, remove it again when it no longer does.
   // Only attributes added by this polyfill (flagged with MARKER) are ever removed.
   const makeScrollableFocusable = (element) => {
+    trackSize(element);
+
     const hasOverflow =
       element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
 
@@ -101,30 +135,24 @@ export function applyPolyfill(options = {}) {
     }
   };
 
-  // Apply to all potentially scrollable elements
-  const applyToExistingElements = () => {
-    log('Applying to existing elements with selectors:', currentOptions.selectors);
-
+  // Run fn on root and any descendant matching the configured selectors
+  const forEachMatch = (root, fn) => {
     currentOptions.selectors.forEach((selector) => {
       try {
-        const elements = document.querySelectorAll(selector);
-        log(`Found ${elements.length} elements matching "${selector}"`);
-        elements.forEach(makeScrollableFocusable);
+        if (root.matches?.(selector)) {
+          fn(root);
+        }
+        root.querySelectorAll?.(selector).forEach(fn);
       } catch (e) {
         log('Error with selector', selector, e);
       }
     });
   };
 
-  // Re-evaluate on resize: overflow can appear or disappear without any DOM mutation
-  let rafId = null;
-  const scheduleReevaluation = () => {
-    if (rafId !== null) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = null;
-      log('Re-evaluating elements after resize');
-      applyToExistingElements();
-    });
+  // Apply to all potentially scrollable elements
+  const applyToExistingElements = () => {
+    log('Applying to existing elements with selectors:', currentOptions.selectors);
+    forEachMatch(document.documentElement, makeScrollableFocusable);
   };
 
   // Observe DOM changes and apply polyfill to new elements
@@ -132,28 +160,13 @@ export function applyPolyfill(options = {}) {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
-          // Element node
-          // Check if the node itself matches any selector
-          currentOptions.selectors.forEach((selector) => {
-            try {
-              if (node.matches?.(selector)) {
-                makeScrollableFocusable(node);
-              }
-            } catch (_e) {
-              // Ignore invalid selectors
-            }
-          });
+          forEachMatch(node, makeScrollableFocusable);
+        }
+      });
 
-          // Check children as well
-          if (node.querySelectorAll) {
-            currentOptions.selectors.forEach((selector) => {
-              try {
-                node.querySelectorAll(selector).forEach(makeScrollableFocusable);
-              } catch (_e) {
-                // Ignore invalid selectors
-              }
-            });
-          }
+      mutation.removedNodes.forEach((node) => {
+        if (node.nodeType === 1) {
+          forEachMatch(node, untrackSize);
         }
       });
     });
@@ -174,10 +187,7 @@ export function applyPolyfill(options = {}) {
 
   window.addEventListener('resize', scheduleReevaluation);
 
-  if (typeof ResizeObserver !== 'undefined') {
-    const resizeObserver = new ResizeObserver(scheduleReevaluation);
-    resizeObserver.observe(document.documentElement);
-  }
-
   log('Polyfill applied and observers started');
+
+  return { refresh: applyToExistingElements };
 }

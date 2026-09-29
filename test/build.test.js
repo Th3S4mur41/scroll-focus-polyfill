@@ -50,6 +50,14 @@ expectedFiles.forEach(file => {
         allTestsPassed = false;
       }
 
+      // Check that the polyfill reacts to size changes at element level
+      if (content.includes('ResizeObserver') && content.includes('unobserve')) {
+        console.log(`  ✓ Contains element-level resize observation`);
+      } else {
+        console.log(`  ✗ Missing element-level resize observation`);
+        allTestsPassed = false;
+      }
+
       // Check that the polyfill reacts to viewport changes
       if (content.includes('resize') && content.includes('removeAttribute')) {
         console.log(`  ✓ Contains resize re-evaluation logic`);
