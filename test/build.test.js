@@ -50,6 +50,14 @@ expectedFiles.forEach(file => {
         allTestsPassed = false;
       }
 
+      // Check that content changes inside matching elements are covered
+      if (content.includes('characterData') && content.includes('parentElement')) {
+        console.log(`  ✓ Contains content-change re-evaluation`);
+      } else {
+        console.log(`  ✗ Missing content-change re-evaluation`);
+        allTestsPassed = false;
+      }
+
       // Check that the polyfill reacts to size changes at element level
       if (content.includes('ResizeObserver') && content.includes('unobserve')) {
         console.log(`  ✓ Contains element-level resize observation`);

@@ -186,7 +186,7 @@ polyfill.refresh();
 
 1. **Detection**: The polyfill checks if the browser needs it by testing if a `<pre>` element with scrollable content can receive focus
 2. **Application**: If needed (or if `force: true`), it adds `tabindex="0"` to matching elements that have scrollable content
-3. **Observation**: It monitors the DOM for new elements and applies the fix automatically
+3. **Observation**: It monitors the DOM for new elements and applies the fix automatically. Because content added or edited *inside* a matching element changes its `scrollWidth`/`scrollHeight` without changing its own box, every mutation also re-evaluates its matching ancestors, and text edits are covered through `characterData` observation
 4. **Re-evaluation**: It also re-checks elements when sizes change, adding `tabindex="0"` when a scrollbar appears and removing it again when the content no longer overflows. A single `ResizeObserver` watches each matching element, so changes caused by a sibling, sidebar or grid track are detected even when the viewport stays the same size. Elements removed from the DOM are unobserved automatically
 
 Elements that already had a `tabindex` before the polyfill ran are never modified. Attributes added by the polyfill are flagged with `data-scroll-focus-polyfill`, and are only removed while they still hold the value the polyfill assigned, so an application that takes over the `tabindex` keeps full control of it.

@@ -149,6 +149,29 @@ export function applyPolyfill(options = {}) {
     });
   };
 
+  const matchesAnySelector = (element) =>
+    currentOptions.selectors.some((selector) => {
+      try {
+        return element.matches(selector);
+      } catch (e) {
+        log('Error with selector', selector, e);
+        return false;
+      }
+    });
+
+  // A mutation deep inside an element changes its scrollWidth/scrollHeight without
+  // changing its box, so ResizeObserver stays silent and the ancestors need checking
+  const collectMatchingAncestors = (node, pending) => {
+    let element = node.nodeType === 1 ? node : node.parentElement;
+
+    while (element) {
+      if (matchesAnySelector(element)) {
+        pending.add(element);
+      }
+      element = element.parentElement;
+    }
+  };
+
   // Apply to all potentially scrollable elements
   const applyToExistingElements = () => {
     log('Applying to existing elements with selectors:', currentOptions.selectors);
@@ -157,10 +180,12 @@ export function applyPolyfill(options = {}) {
 
   // Observe DOM changes and apply polyfill to new elements
   const observer = new MutationObserver((mutations) => {
+    const pending = new Set();
+
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
-          forEachMatch(node, makeScrollableFocusable);
+          forEachMatch(node, (element) => pending.add(element));
         }
       });
 
@@ -169,7 +194,11 @@ export function applyPolyfill(options = {}) {
           forEachMatch(node, untrackSize);
         }
       });
+
+      collectMatchingAncestors(mutation.target, pending);
     });
+
+    pending.forEach(makeScrollableFocusable);
   });
 
   // Initialize
@@ -181,6 +210,7 @@ export function applyPolyfill(options = {}) {
 
   // Start observing
   observer.observe(document.documentElement, {
+    characterData: true,
     childList: true,
     subtree: true,
   });
