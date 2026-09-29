@@ -49,6 +49,14 @@ expectedFiles.forEach(file => {
         console.log(`  ✗ Missing expected polyfill logic`);
         allTestsPassed = false;
       }
+
+      // Check that the polyfill reacts to viewport changes
+      if (content.includes('resize') && content.includes('removeAttribute')) {
+        console.log(`  ✓ Contains resize re-evaluation logic`);
+      } else {
+        console.log(`  ✗ Missing resize re-evaluation logic`);
+        allTestsPassed = false;
+      }
     } else {
       console.log(`✗ ${file} is empty`);
       allTestsPassed = false;

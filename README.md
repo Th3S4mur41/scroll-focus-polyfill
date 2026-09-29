@@ -169,12 +169,16 @@ applyPolyfill({ force: true });
 1. **Detection**: The polyfill checks if the browser needs it by testing if a `<pre>` element with scrollable content can receive focus
 2. **Application**: If needed (or if `force: true`), it adds `tabindex="0"` to matching elements that have scrollable content
 3. **Observation**: It monitors the DOM for new elements and applies the fix automatically
+4. **Re-evaluation**: It also re-checks all matching elements when the window or document is resized, adding `tabindex="0"` when a scrollbar appears and removing it again when the content no longer overflows
+
+Elements that already had a `tabindex` before the polyfill ran are never modified. Attributes added by the polyfill are flagged with `data-scroll-focus-polyfill` so only those are removed.
 
 ## Browser Support
 
 This polyfill works in all modern browsers and will only activate if needed. It uses:
 
 - `MutationObserver` for DOM monitoring
+- `ResizeObserver` (when available) and the `resize` event for viewport changes
 - Standard DOM APIs for element detection
 
 ## Contributing

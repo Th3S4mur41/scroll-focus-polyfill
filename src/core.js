@@ -15,6 +15,9 @@ const defaultOptions = {
 
 let currentOptions = { ...defaultOptions };
 
+// Marks elements whose tabindex was added by this polyfill, so it can be safely removed
+const MARKER = 'data-scroll-focus-polyfill';
+
 // Logger that only logs when debug is enabled
 const log = (...args) => {
   if (currentOptions.debug) {
@@ -73,14 +76,25 @@ export function applyPolyfill(options = {}) {
     log('Force option enabled, applying polyfill regardless');
   }
 
-  // Make scrollable elements focusable by adding tabindex if needed
+  // Add tabindex when an element overflows, remove it again when it no longer does.
+  // Only attributes added by this polyfill (flagged with MARKER) are ever removed.
   const makeScrollableFocusable = (element) => {
     const hasOverflow =
       element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
 
-    if (hasOverflow && !element.hasAttribute('tabindex')) {
-      element.setAttribute('tabindex', '0');
-      log('Added tabindex to element:', element.tagName.toLowerCase());
+    if (hasOverflow) {
+      if (!element.hasAttribute('tabindex')) {
+        element.setAttribute('tabindex', '0');
+        element.setAttribute(MARKER, '');
+        log('Added tabindex to element:', element.tagName.toLowerCase());
+      }
+      return;
+    }
+
+    if (element.hasAttribute(MARKER)) {
+      element.removeAttribute('tabindex');
+      element.removeAttribute(MARKER);
+      log('Removed tabindex from element:', element.tagName.toLowerCase());
     }
   };
 
@@ -96,6 +110,17 @@ export function applyPolyfill(options = {}) {
       } catch (e) {
         log('Error with selector', selector, e);
       }
+    });
+  };
+
+  // Re-evaluate on resize: overflow can appear or disappear without any DOM mutation
+  let rafId = null;
+  const scheduleReevaluation = () => {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      log('Re-evaluating elements after resize');
+      applyToExistingElements();
     });
   };
 
@@ -144,5 +169,12 @@ export function applyPolyfill(options = {}) {
     subtree: true,
   });
 
-  log('Polyfill applied and observer started');
+  window.addEventListener('resize', scheduleReevaluation);
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const resizeObserver = new ResizeObserver(scheduleReevaluation);
+    resizeObserver.observe(document.documentElement);
+  }
+
+  log('Polyfill applied and observers started');
 }
