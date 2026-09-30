@@ -17,6 +17,9 @@ const defaultOptions = {
 // Marks elements whose tabindex was added by this polyfill, so it can be safely removed
 const MARKER = 'data-scroll-focus-polyfill';
 
+// Attributes this polyfill writes itself, ignored to avoid a self-triggered second pass
+const OWN_ATTRIBUTES = new Set(['tabindex', MARKER]);
+
 // Logger that only logs when debug is enabled
 const createLogger = (options) => {
   return (...args) => {
@@ -190,6 +193,14 @@ export function applyPolyfill(options = {}) {
     };
 
     mutations.forEach((mutation) => {
+      // A class or style change on a descendant can make a fixed-size ancestor overflow
+      if (mutation.type === 'attributes') {
+        if (!OWN_ATTRIBUTES.has(mutation.attributeName)) {
+          collectMatchingAncestors(mutation.target, pending);
+        }
+        return;
+      }
+
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
           forEachMatch(node, (element) => pending.add(element));
@@ -220,6 +231,7 @@ export function applyPolyfill(options = {}) {
 
   // Start observing
   observer.observe(document.documentElement, {
+    attributes: true,
     characterData: true,
     childList: true,
     subtree: true,
