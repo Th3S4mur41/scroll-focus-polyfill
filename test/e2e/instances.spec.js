@@ -100,6 +100,34 @@ test('validates managed selector membership once per mutation batch', async ({ p
   await expect.poll(() => page.evaluate(() => window.__managedSelectorChecks)).toBe(12);
 });
 
+test('does not rescan parent scopes for polyfill-owned attributes', async ({ page }) => {
+  await loadPage(page, { style: '.scrollable { width: 200px; }' });
+  await applyPolyfill(page, { ...FORCE, selectors: ['.scrollable'] });
+
+  await page.evaluate(() => {
+    const nativeQuerySelectorAll = Element.prototype.querySelectorAll;
+    window.__parentScopeScans = 0;
+    Element.prototype.querySelectorAll = function (selector) {
+      if (selector === '.scrollable' && this.hasAttribute('data-scope')) {
+        window.__parentScopeScans += 1;
+      }
+      return nativeQuerySelectorAll.call(this, selector);
+    };
+
+    document.body.innerHTML = Array.from(
+      { length: 8 },
+      (_, index) =>
+        `<div data-scope="${index}"><pre class="scrollable"><span class="filler" style="width: 400px"></span></pre></div>`
+    ).join('');
+  });
+
+  await expect(page.locator('.scrollable')).toHaveCount(8);
+  await expect(page.locator('.scrollable').first()).toHaveAttribute('tabindex', '0');
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+
+  expect(await page.evaluate(() => window.__parentScopeScans)).toBe(0);
+});
+
 test('survives a node added and removed within the same batch', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));

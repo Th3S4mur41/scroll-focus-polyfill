@@ -230,18 +230,19 @@ export function applyPolyfill(options = {}) {
     let validateManagedElements = false;
 
     mutations.forEach((mutation) => {
-      collectParentScope(mutation.target, scopes);
-
       // A class or style change on a descendant can make a fixed-size ancestor overflow
       if (mutation.type === 'attributes') {
-        if (!OWN_ATTRIBUTES.has(mutation.attributeName)) {
-          validateManagedElements = true;
-          collectMatchingAncestors(mutation.target, pending);
-        }
+        if (OWN_ATTRIBUTES.has(mutation.attributeName)) return;
+
+        collectParentScope(mutation.target, scopes);
+        validateManagedElements = true;
+        collectMatchingAncestors(mutation.target, pending);
         return;
       }
 
       validateManagedElements = true;
+      scopes.add(mutation.target);
+
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
           collectParentScope(node, scopes);
