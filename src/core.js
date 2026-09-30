@@ -19,6 +19,7 @@ const MARKER = 'data-scroll-focus-polyfill';
 
 // Attributes this polyfill writes itself, ignored to avoid a self-triggered second pass
 const OWN_ATTRIBUTES = new Set(['tabindex', MARKER]);
+const selectorOwners = new WeakMap();
 
 // Logger that only logs when debug is enabled
 const createLogger = (options) => {
@@ -95,6 +96,7 @@ export function applyPolyfill(options = {}) {
   // One observer for all targets: cost scales with element count, not observer count
   const observedElements = new WeakSet();
   const managedElements = new Set();
+  const instanceId = Symbol('scroll-focus-polyfill-instance');
   const resizeObserver =
     settings.observeResize && typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(scheduleReevaluation)
@@ -113,12 +115,24 @@ export function applyPolyfill(options = {}) {
     resizeObserver.unobserve(element);
   };
 
+  const releaseOwnership = (element) => {
+    const owners = selectorOwners.get(element);
+    if (!owners) return true;
+
+    owners.delete(instanceId);
+    if (owners.size > 0) return false;
+
+    selectorOwners.delete(element);
+    return true;
+  };
+
   const stopManaging = (element, pending, clearOwnedAttributes = false) => {
     pending.delete(element);
     managedElements.delete(element);
     untrackSize(element);
 
-    if (clearOwnedAttributes && element.hasAttribute(MARKER)) {
+    const hasNoOwners = releaseOwnership(element);
+    if (clearOwnedAttributes && hasNoOwners && element.hasAttribute(MARKER)) {
       if (element.getAttribute('tabindex') === '0') {
         element.removeAttribute('tabindex');
       }
@@ -129,6 +143,12 @@ export function applyPolyfill(options = {}) {
   // Add tabindex when an element overflows, remove it again when it no longer does.
   // Only attributes added by this polyfill (flagged with MARKER) are ever removed.
   const makeScrollableFocusable = (element) => {
+    let owners = selectorOwners.get(element);
+    if (!owners) {
+      owners = new Set();
+      selectorOwners.set(element, owners);
+    }
+    owners.add(instanceId);
     managedElements.add(element);
     trackSize(element);
 
@@ -200,19 +220,13 @@ export function applyPolyfill(options = {}) {
   // Observe DOM changes and apply polyfill to new elements
   const observer = new MutationObserver((mutations) => {
     const pending = new Set();
+    let validateManagedElements = false;
 
     mutations.forEach((mutation) => {
       // A class or style change on a descendant can make a fixed-size ancestor overflow
       if (mutation.type === 'attributes') {
         if (!OWN_ATTRIBUTES.has(mutation.attributeName)) {
-          const checkMatch = (element) => {
-            if (managedElements.has(element) && !matchesAnySelector(element)) {
-              stopManaging(element, pending, true);
-            }
-          };
-
-          managedElements.forEach(checkMatch);
-
+          validateManagedElements = true;
           forEachMatch(mutation.target, (element) => pending.add(element));
           collectMatchingAncestors(mutation.target, pending);
         }
@@ -238,6 +252,14 @@ export function applyPolyfill(options = {}) {
 
       collectMatchingAncestors(mutation.target, pending);
     });
+
+    if (validateManagedElements) {
+      managedElements.forEach((element) => {
+        if (!matchesAnySelector(element)) {
+          stopManaging(element, pending, true);
+        }
+      });
+    }
 
     pending.forEach(makeScrollableFocusable);
   });

@@ -23,7 +23,9 @@ export async function loadPage(page, { body = '', style = '' } = {}) {
 
 // Applies the manual entry point and keeps the returned handle reachable for refresh() tests
 export async function applyPolyfill(page, options = {}) {
-  await page.addScriptTag({ content: fnBundle });
+  if (!(await page.evaluate(() => Boolean(window.ScrollFocusPolyfill)))) {
+    await page.addScriptTag({ content: fnBundle });
+  }
   await page.evaluate((opts) => {
     window.__polyfill = window.ScrollFocusPolyfill.applyPolyfill(opts);
   }, options);
