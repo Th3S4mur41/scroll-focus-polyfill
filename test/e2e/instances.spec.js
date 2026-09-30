@@ -4,10 +4,10 @@ import { applyPolyfill, loadPage } from './fixtures.js';
 const FORCE = { force: true };
 
 const sidebarLayout = {
-  style: '#code { flex: 1 1 auto; min-width: 0; }',
+  style: '#code { flex: 1 1 auto; min-width: 0; } #side { width: 100px; }',
   body: `
     <div class="row" style="width: 400px">
-      <div id="side" style="width: 100px"></div>
+      <div id="side"></div>
       <pre id="code"><span class="filler" style="width: 250px"></span></pre>
     </div>
   `,
@@ -17,8 +17,8 @@ test('refresh() picks up changes missed when observeResize is disabled', async (
   await loadPage(page, sidebarLayout);
   await applyPolyfill(page, { ...FORCE, observeResize: false });
 
-  await page.locator('#side').evaluate((el) => {
-    el.style.width = '350px';
+  await page.evaluate(() => {
+    document.styleSheets[0].insertRule('#side { width: 350px !important; }');
   });
 
   await expect(page.locator('#code')).not.toHaveAttribute('tabindex');

@@ -211,6 +211,12 @@ export function applyPolyfill(options = {}) {
     }
   };
 
+  const collectParentScope = (node, scopes) => {
+    const element = node.nodeType === 1 ? node : node.parentElement;
+    const scope = element?.parentElement ?? element;
+    if (scope) scopes.add(scope);
+  };
+
   // Apply to all potentially scrollable elements
   const applyToExistingElements = () => {
     log('Applying to existing elements with selectors:', settings.selectors);
@@ -220,22 +226,25 @@ export function applyPolyfill(options = {}) {
   // Observe DOM changes and apply polyfill to new elements
   const observer = new MutationObserver((mutations) => {
     const pending = new Set();
+    const scopes = new Set();
     let validateManagedElements = false;
 
     mutations.forEach((mutation) => {
+      collectParentScope(mutation.target, scopes);
+
       // A class or style change on a descendant can make a fixed-size ancestor overflow
       if (mutation.type === 'attributes') {
         if (!OWN_ATTRIBUTES.has(mutation.attributeName)) {
           validateManagedElements = true;
-          forEachMatch(mutation.target, (element) => pending.add(element));
           collectMatchingAncestors(mutation.target, pending);
         }
         return;
       }
 
+      validateManagedElements = true;
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
-          forEachMatch(node, (element) => pending.add(element));
+          collectParentScope(node, scopes);
         }
       });
 
@@ -260,6 +269,10 @@ export function applyPolyfill(options = {}) {
         }
       });
     }
+
+    scopes.forEach((scope) => {
+      forEachMatch(scope, (element) => pending.add(element));
+    });
 
     pending.forEach(makeScrollableFocusable);
   });

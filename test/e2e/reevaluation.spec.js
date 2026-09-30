@@ -110,6 +110,40 @@ test('detects overflow created and cleared by a class change on a child', async 
   await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
 });
 
+test('reevaluates sibling matches after an attribute change', async ({ page }) => {
+  await loadPage(page, {
+    style: '.scrollable { width: 200px; }',
+    body: '<div id="toggle"></div><pre id="code" class="scrollable"><span class="filler" style="width: 400px"></span></pre>',
+  });
+  await applyPolyfill(page, { ...FORCE, selectors: ['.enabled + .scrollable'] });
+
+  await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
+
+  await page.locator('#toggle').evaluate((element) => element.classList.add('enabled'));
+
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+});
+
+test('reevaluates sibling matches after child-list changes and releases stopped matches', async ({ page }) => {
+  await loadPage(page, {
+    style: '.scrollable { width: 200px; }',
+    body: '<span id="before"></span><pre id="code" class="scrollable"><span class="filler" style="width: 400px"></span></pre>',
+  });
+  await applyPolyfill(page, { ...FORCE, selectors: ['div + .scrollable'] });
+
+  await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
+
+  await page.locator('#code').evaluate((element) => {
+    const sibling = document.createElement('div');
+    sibling.id = 'trigger';
+    element.before(sibling);
+  });
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+
+  await page.locator('#trigger').evaluate((element) => element.remove());
+  await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
+});
+
 test('applies to elements added after the polyfill ran', async ({ page }) => {
   await loadPage(page, { style: '.code { width: 200px; }' });
   await applyPolyfill(page, { ...FORCE, selectors: ['.code'] });
