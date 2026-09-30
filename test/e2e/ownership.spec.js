@@ -68,3 +68,32 @@ test('removes only the tabindex it added when overflow disappears', async ({ pag
   await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
   await expect(page.locator('#code')).not.toHaveAttribute('data-scroll-focus-polyfill');
 });
+
+test('releases an element when it stops matching its selector', async ({ page }) => {
+  await loadPage(page, {
+    style: '.scrollable { width: 200px; }',
+    body: '<pre id="code" class="scrollable"><span class="filler" style="width: 400px"></span></pre>',
+  });
+
+  await page.evaluate(() => {
+    const NativeResizeObserver = window.ResizeObserver;
+    window.__unobserved = [];
+    window.ResizeObserver = class extends NativeResizeObserver {
+      unobserve(element) {
+        window.__unobserved.push(element.id);
+        super.unobserve(element);
+      }
+    };
+  });
+  await applyPolyfill(page, { ...FORCE, selectors: ['.scrollable'] });
+
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+  await page.locator('#code').evaluate((element) => element.classList.remove('scrollable'));
+
+  await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
+  await expect(page.locator('#code')).not.toHaveAttribute('data-scroll-focus-polyfill');
+  await expect.poll(() => page.evaluate(() => window.__unobserved)).toContain('code');
+
+  await page.locator('#code').evaluate((element) => element.classList.add('scrollable'));
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+});

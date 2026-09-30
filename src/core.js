@@ -94,6 +94,7 @@ export function applyPolyfill(options = {}) {
 
   // One observer for all targets: cost scales with element count, not observer count
   const observedElements = new WeakSet();
+  const managedElements = new Set();
   const resizeObserver =
     settings.observeResize && typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(scheduleReevaluation)
@@ -112,9 +113,23 @@ export function applyPolyfill(options = {}) {
     resizeObserver.unobserve(element);
   };
 
+  const stopManaging = (element, pending, clearOwnedAttributes = false) => {
+    pending.delete(element);
+    managedElements.delete(element);
+    untrackSize(element);
+
+    if (clearOwnedAttributes && element.hasAttribute(MARKER)) {
+      if (element.getAttribute('tabindex') === '0') {
+        element.removeAttribute('tabindex');
+      }
+      element.removeAttribute(MARKER);
+    }
+  };
+
   // Add tabindex when an element overflows, remove it again when it no longer does.
   // Only attributes added by this polyfill (flagged with MARKER) are ever removed.
   const makeScrollableFocusable = (element) => {
+    managedElements.add(element);
     trackSize(element);
 
     const hasOverflow =
@@ -186,16 +201,19 @@ export function applyPolyfill(options = {}) {
   const observer = new MutationObserver((mutations) => {
     const pending = new Set();
 
-    // Drop queued matches first, otherwise evaluating one would re-observe a detached node
-    const releaseElement = (element) => {
-      pending.delete(element);
-      untrackSize(element);
-    };
-
     mutations.forEach((mutation) => {
       // A class or style change on a descendant can make a fixed-size ancestor overflow
       if (mutation.type === 'attributes') {
         if (!OWN_ATTRIBUTES.has(mutation.attributeName)) {
+          const checkMatch = (element) => {
+            if (managedElements.has(element) && !matchesAnySelector(element)) {
+              stopManaging(element, pending, true);
+            }
+          };
+
+          managedElements.forEach(checkMatch);
+
+          forEachMatch(mutation.target, (element) => pending.add(element));
           collectMatchingAncestors(mutation.target, pending);
         }
         return;
@@ -212,8 +230,10 @@ export function applyPolyfill(options = {}) {
 
         // Walk every element, not just current matches: an element that stopped matching
         // before detaching would otherwise stay observed forever
-        releaseElement(node);
-        node.querySelectorAll?.('*').forEach(releaseElement);
+        stopManaging(node, pending);
+        node.querySelectorAll?.('*').forEach((element) => {
+          stopManaging(element, pending);
+        });
       });
 
       collectMatchingAncestors(mutation.target, pending);
