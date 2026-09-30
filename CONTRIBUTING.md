@@ -56,20 +56,28 @@ The dev server starts a local Vite server that serves the `demo.html` file at `h
 
 ### Testing
 
-Run the build verification tests:
+Install the Playwright browser binaries once after installing dependencies:
 
 ```bash
-npm run test
+npx playwright install
 ```
 
-This command builds the project and verifies that all expected output files are generated correctly.
+Run all tests, including packaging checks and the Chromium, Firefox, and WebKit browser suite:
+
+```bash
+npm test
+```
+
+`npm test` builds the bundles before running all tests. To run just the packaging checks after a build, use `npm run test:build`.
 
 ## Available Scripts
 
 - `npm run build` - Build the production bundle
 - `npm run dev` - Start development server for testing demo.html
 - `npm run preview` - Preview the production build
-- `npm run test` - Run build verification tests
+- `npm run test` - Build and run packaging and cross-browser Playwright tests
+- `npm run test:e2e` - Run Playwright tests in Chromium, Firefox, and WebKit
+- `npm run test:build` - Verify generated build artifacts and package entry points
 - `npm run lint` - Check code for linting and formatting issues
 - `npm run lint:fix` - Auto-fix linting and formatting issues
 
@@ -82,7 +90,9 @@ scroll-focus-polyfill/
 │   ├── core.js      # Core polyfill logic
 │   └── index.js     # Function export entry point
 ├── test/
-│   └── build.test.js # Build verification tests
+│   ├── build.test.js # Packaging smoke test
+│   └── e2e/          # Cross-browser Playwright tests
+├── playwright.config.js
 ├── .github/
 │   └── workflows/   # CI/CD workflows
 ├── demo.html        # Demo page
