@@ -24,6 +24,13 @@ if (!selectorOwners) {
   globalThis[ownershipKey] = selectorOwners;
 }
 
+const attributeOwnershipKey = Symbol.for('scroll-focus-polyfill.attribute-owners');
+let attributeOwners = globalThis[attributeOwnershipKey];
+if (!attributeOwners) {
+  attributeOwners = new WeakMap();
+  globalThis[attributeOwnershipKey] = attributeOwners;
+}
+
 const getMutationNewValues = (mutations) => {
   const newValues = new Map();
   const currentValues = new Map();
@@ -130,6 +137,30 @@ export function applyPolyfill(options = {}) {
     element.removeAttribute(name);
   };
 
+  const addOwnedTabindex = (element) => {
+    const markerOwned = !element.hasAttribute(MARKER);
+    const ownership = { tabindexValue: '0', markerValue: markerOwned ? '' : null };
+    attributeOwners.set(element, ownership);
+
+    setPolyfillAttribute(element, 'tabindex', ownership.tabindexValue);
+    if (markerOwned) {
+      setPolyfillAttribute(element, MARKER, ownership.markerValue);
+    }
+  };
+
+  const removeOwnedTabindex = (element) => {
+    const ownership = attributeOwners.get(element);
+    if (!ownership) return;
+
+    if (element.getAttribute('tabindex') === ownership.tabindexValue) {
+      removePolyfillAttribute(element, 'tabindex');
+    }
+    if (ownership.markerValue !== null && element.getAttribute(MARKER) === ownership.markerValue) {
+      removePolyfillAttribute(element, MARKER);
+    }
+    attributeOwners.delete(element);
+  };
+
   const consumeOwnAttributeWrite = (mutation, newValue) => {
     const attributes = ownAttributeWrites.get(mutation.target);
     const writes = attributes?.get(mutation.attributeName);
@@ -207,11 +238,8 @@ export function applyPolyfill(options = {}) {
     untrackSize(element);
 
     const hasNoOwners = releaseOwnership(element);
-    if (clearOwnedAttributes && hasNoOwners && element.hasAttribute(MARKER)) {
-      if (element.getAttribute('tabindex') === '0') {
-        removePolyfillAttribute(element, 'tabindex');
-      }
-      removePolyfillAttribute(element, MARKER);
+    if (clearOwnedAttributes && hasNoOwners) {
+      removeOwnedTabindex(element);
     }
   };
 
@@ -232,20 +260,15 @@ export function applyPolyfill(options = {}) {
 
     if (hasOverflow) {
       if (!element.hasAttribute('tabindex')) {
-        setPolyfillAttribute(element, 'tabindex', '0');
-        setPolyfillAttribute(element, MARKER, '');
+        addOwnedTabindex(element);
         log('Added tabindex to element:', element.tagName.toLowerCase());
       }
       return;
     }
 
-    if (element.hasAttribute(MARKER)) {
-      // The app may have taken over the value since we set it; in that case leave it alone
-      if (element.getAttribute('tabindex') === '0') {
-        removePolyfillAttribute(element, 'tabindex');
-        log('Removed tabindex from element:', element.tagName.toLowerCase());
-      }
-      removePolyfillAttribute(element, MARKER);
+    if (attributeOwners.has(element)) {
+      removeOwnedTabindex(element);
+      log('Removed tabindex from element:', element.tagName.toLowerCase());
     }
   };
 
@@ -353,6 +376,7 @@ export function applyPolyfill(options = {}) {
     }
 
     scopes.forEach((scope) => {
+      if (!scope.isConnected) return;
       forEachMatch(scope, (element) => pending.add(element));
     });
 

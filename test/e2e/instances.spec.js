@@ -182,10 +182,21 @@ test('survives a node added and removed within the same batch', async ({ page })
   page.on('pageerror', (error) => errors.push(error.message));
 
   await loadPage(page, { style: 'pre { width: 200px; }' });
+  await page.evaluate(() => {
+    const NativeResizeObserver = window.ResizeObserver;
+    window.__observedElements = [];
+    window.ResizeObserver = class extends NativeResizeObserver {
+      observe(element, options) {
+        window.__observedElements.push(element.id);
+        super.observe(element, options);
+      }
+    };
+  });
   await applyPolyfill(page, FORCE);
 
   await page.evaluate(() => {
     const pre = document.createElement('pre');
+    pre.id = 'transient';
     pre.innerHTML = '<span class="filler" style="width: 400px"></span>';
     document.body.appendChild(pre);
     pre.remove();
@@ -200,5 +211,6 @@ test('survives a node added and removed within the same batch', async ({ page })
   });
 
   await expect(page.locator('#kept')).toHaveAttribute('tabindex', '0');
+  await expect.poll(() => page.evaluate(() => window.__observedElements)).toEqual(['kept']);
   expect(errors).toEqual([]);
 });

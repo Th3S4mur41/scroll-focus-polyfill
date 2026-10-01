@@ -57,6 +57,17 @@ test('never touches a tabindex that existed before the polyfill ran', async ({ p
   await expect(page.locator('#code')).toHaveAttribute('tabindex', '5');
 });
 
+test('preserves pre-existing tabindex and marker attributes', async ({ page }) => {
+  await loadPage(page, {
+    style: '#code { width: 200px; }',
+    body: '<pre id="code" tabindex="0" data-scroll-focus-polyfill></pre>',
+  });
+  await applyPolyfill(page, FORCE);
+
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+  await expect(page.locator('#code')).toHaveAttribute('data-scroll-focus-polyfill', '');
+});
+
 test('removes only the tabindex it added when overflow disappears', async ({ page }) => {
   await loadPage(page, overflowingPre);
   await applyPolyfill(page, FORCE);

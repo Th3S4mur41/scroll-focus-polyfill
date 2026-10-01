@@ -189,7 +189,7 @@ polyfill.refresh();
 3. **Observation**: It monitors the DOM for new elements and applies the fix automatically. Because content added, edited or restyled *inside* a matching element changes its `scrollWidth`/`scrollHeight` without changing its own box, every mutation also re-evaluates its matching ancestors. Child list, `characterData` and attribute changes are all observed, so text edits and `class`/`style` changes are covered
 4. **Re-evaluation**: It also re-checks elements when sizes change, adding `tabindex="0"` when a scrollbar appears and removing it again when the content no longer overflows. A single `ResizeObserver` watches each matching element, so changes caused by a sibling, sidebar or grid track are detected even when the viewport stays the same size. Elements removed from the DOM are unobserved automatically
 
-Elements that already had a `tabindex` before the polyfill ran are never modified. Attributes added by the polyfill are flagged with `data-scroll-focus-polyfill`, and are only removed while they still hold the value the polyfill assigned, so an application that takes over the `tabindex` keeps full control of it.
+Elements that already had a `tabindex` before the polyfill ran are never modified. Internal ownership state tracks attributes added by the polyfill; the `data-scroll-focus-polyfill` marker alone is never treated as proof of ownership. The polyfill removes its own `tabindex` and marker values only while they remain unchanged, so application-managed values are preserved.
 
 ## Browser Support
 
