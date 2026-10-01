@@ -17,9 +17,37 @@ const defaultOptions = {
 // Marks elements whose tabindex was added by this polyfill, so it can be safely removed
 const MARKER = 'data-scroll-focus-polyfill';
 
-// Attributes this polyfill writes itself, ignored to avoid a self-triggered second pass
-const OWN_ATTRIBUTES = new Set(['tabindex', MARKER]);
-const selectorOwners = new WeakMap();
+const ownershipKey = Symbol.for('scroll-focus-polyfill.selector-owners');
+let selectorOwners = globalThis[ownershipKey];
+if (!selectorOwners) {
+  selectorOwners = new WeakMap();
+  globalThis[ownershipKey] = selectorOwners;
+}
+
+const getMutationNewValues = (mutations) => {
+  const newValues = new Map();
+  const currentValues = new Map();
+
+  for (let index = mutations.length - 1; index >= 0; index -= 1) {
+    const mutation = mutations[index];
+    if (mutation.type !== 'attributes') continue;
+
+    let attributes = currentValues.get(mutation.target);
+    if (!attributes) {
+      attributes = new Map();
+      currentValues.set(mutation.target, attributes);
+    }
+
+    const name = mutation.attributeName;
+    const newValue = attributes.has(name)
+      ? attributes.get(name)
+      : mutation.target.getAttribute(name);
+    newValues.set(mutation, newValue);
+    attributes.set(name, mutation.oldValue);
+  }
+
+  return newValues;
+};
 
 // Logger that only logs when debug is enabled
 const createLogger = (options) => {
@@ -51,7 +79,8 @@ function isPolyfillNeeded(log) {
   test.style.left = '-9999px';
   test.setAttribute('aria-hidden', 'true');
 
-  document.body.appendChild(test);
+  const container = document.body ?? document.documentElement;
+  container.appendChild(test);
 
   // Try focusing it
   test.focus({ preventScroll: true });
@@ -60,7 +89,7 @@ function isPolyfillNeeded(log) {
   log(`Test element is focusable: ${result}`);
 
   // Cleanup
-  document.body.removeChild(test);
+  container.removeChild(test);
 
   return !result;
 }
@@ -70,6 +99,52 @@ export function applyPolyfill(options = {}) {
   // Options are per invocation so a later call cannot retarget this instance
   const settings = { ...defaultOptions, ...options };
   const log = createLogger(settings);
+  const ownAttributeWrites = new WeakMap();
+
+  const recordOwnAttributeWrite = (element, name, oldValue, newValue) => {
+    let attributes = ownAttributeWrites.get(element);
+    if (!attributes) {
+      attributes = new Map();
+      ownAttributeWrites.set(element, attributes);
+    }
+
+    let writes = attributes.get(name);
+    if (!writes) {
+      writes = [];
+      attributes.set(name, writes);
+    }
+
+    writes.push({ oldValue, newValue });
+  };
+
+  const setPolyfillAttribute = (element, name, value) => {
+    const oldValue = element.getAttribute(name);
+    if (oldValue === value) return;
+    recordOwnAttributeWrite(element, name, oldValue, value);
+    element.setAttribute(name, value);
+  };
+
+  const removePolyfillAttribute = (element, name) => {
+    if (!element.hasAttribute(name)) return;
+    recordOwnAttributeWrite(element, name, element.getAttribute(name), null);
+    element.removeAttribute(name);
+  };
+
+  const consumeOwnAttributeWrite = (mutation, newValue) => {
+    const attributes = ownAttributeWrites.get(mutation.target);
+    const writes = attributes?.get(mutation.attributeName);
+    if (!writes) return false;
+
+    const writeIndex = writes.findIndex(
+      (write) => write.oldValue === mutation.oldValue && write.newValue === newValue,
+    );
+    if (writeIndex === -1) return false;
+
+    writes.splice(writeIndex, 1);
+    if (writes.length === 0) attributes.delete(mutation.attributeName);
+    if (attributes.size === 0) ownAttributeWrites.delete(mutation.target);
+    return true;
+  };
 
   log('Applying polyfill with options:', settings);
 
@@ -134,9 +209,9 @@ export function applyPolyfill(options = {}) {
     const hasNoOwners = releaseOwnership(element);
     if (clearOwnedAttributes && hasNoOwners && element.hasAttribute(MARKER)) {
       if (element.getAttribute('tabindex') === '0') {
-        element.removeAttribute('tabindex');
+        removePolyfillAttribute(element, 'tabindex');
       }
-      element.removeAttribute(MARKER);
+      removePolyfillAttribute(element, MARKER);
     }
   };
 
@@ -157,8 +232,8 @@ export function applyPolyfill(options = {}) {
 
     if (hasOverflow) {
       if (!element.hasAttribute('tabindex')) {
-        element.setAttribute('tabindex', '0');
-        element.setAttribute(MARKER, '');
+        setPolyfillAttribute(element, 'tabindex', '0');
+        setPolyfillAttribute(element, MARKER, '');
         log('Added tabindex to element:', element.tagName.toLowerCase());
       }
       return;
@@ -167,10 +242,10 @@ export function applyPolyfill(options = {}) {
     if (element.hasAttribute(MARKER)) {
       // The app may have taken over the value since we set it; in that case leave it alone
       if (element.getAttribute('tabindex') === '0') {
-        element.removeAttribute('tabindex');
+        removePolyfillAttribute(element, 'tabindex');
         log('Removed tabindex from element:', element.tagName.toLowerCase());
       }
-      element.removeAttribute(MARKER);
+      removePolyfillAttribute(element, MARKER);
     }
   };
 
@@ -228,11 +303,12 @@ export function applyPolyfill(options = {}) {
     const pending = new Set();
     const scopes = new Set();
     let validateManagedElements = false;
+    const mutationNewValues = getMutationNewValues(mutations);
 
     mutations.forEach((mutation) => {
       // A class or style change on a descendant can make a fixed-size ancestor overflow
       if (mutation.type === 'attributes') {
-        if (OWN_ATTRIBUTES.has(mutation.attributeName)) return;
+        if (consumeOwnAttributeWrite(mutation, mutationNewValues.get(mutation))) return;
 
         collectParentScope(mutation.target, scopes);
         validateManagedElements = true;
@@ -241,7 +317,12 @@ export function applyPolyfill(options = {}) {
       }
 
       validateManagedElements = true;
-      scopes.add(mutation.target);
+      if (mutation.target.nodeType === 1 || mutation.target.nodeType === 9) {
+        scopes.add(mutation.target);
+      } else if (mutation.target.parentElement) {
+        scopes.add(mutation.target.parentElement);
+      }
+      collectParentScope(mutation.target, scopes);
 
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
@@ -278,20 +359,21 @@ export function applyPolyfill(options = {}) {
     pending.forEach(makeScrollableFocusable);
   });
 
+  // Start observing before initialization so polyfill writes can be identified
+  observer.observe(document.documentElement, {
+    attributeOldValue: true,
+    attributes: true,
+    characterData: true,
+    childList: true,
+    subtree: true,
+  });
+
   // Initialize
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyToExistingElements);
   } else {
     applyToExistingElements();
   }
-
-  // Start observing
-  observer.observe(document.documentElement, {
-    attributes: true,
-    characterData: true,
-    childList: true,
-    subtree: true,
-  });
 
   window.addEventListener('resize', scheduleReevaluation);
 

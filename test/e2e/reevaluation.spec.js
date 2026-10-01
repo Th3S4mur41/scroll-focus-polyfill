@@ -124,6 +124,38 @@ test('reevaluates sibling matches after an attribute change', async ({ page }) =
   await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
 });
 
+test('reevaluates sibling matches after an application tabindex change', async ({ page }) => {
+  await loadPage(page, {
+    style: '.scrollable { width: 200px; }',
+    body: '<div id="before"></div><pre id="code" class="scrollable"><span class="filler" style="width: 400px"></span></pre>',
+  });
+  await applyPolyfill(page, { ...FORCE, selectors: ['[tabindex] + .scrollable'] });
+
+  await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
+
+  await page.locator('#before').evaluate((element) => element.setAttribute('tabindex', '0'));
+
+  await expect(page.locator('#before')).toHaveAttribute('tabindex', '0');
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+});
+
+test('reevaluates sibling matches after character data changes', async ({ page }) => {
+  await loadPage(page, {
+    style: '.scrollable { width: 200px; }',
+    body: '<div id="before"></div><pre id="code" class="scrollable"><span class="filler" style="width: 400px"></span></pre>',
+  });
+  await page.locator('#before').evaluate((element) => element.appendChild(document.createTextNode('')));
+  await applyPolyfill(page, { ...FORCE, selectors: [':empty + .scrollable'] });
+
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+
+  await page.locator('#before').evaluate((element) => {
+    element.firstChild.data = 'not empty';
+  });
+
+  await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
+});
+
 test('reevaluates sibling matches after child-list changes and releases stopped matches', async ({ page }) => {
   await loadPage(page, {
     style: '.scrollable { width: 200px; }',

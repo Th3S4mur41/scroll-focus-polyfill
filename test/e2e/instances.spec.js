@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { applyPolyfill, loadPage } from './fixtures.js';
+import { applyPolyfill, loadAutoBundle, loadPage } from './fixtures.js';
 
 const FORCE = { force: true };
 
@@ -74,6 +74,55 @@ test('keeps tabindex while another matching instance still owns the element', as
 
   await expect(page.locator('#code')).not.toHaveAttribute('tabindex');
   await expect(page.locator('#code')).not.toHaveAttribute('data-scroll-focus-polyfill');
+});
+
+test("does not suppress another instance's selector-affecting tabindex write", async ({ page }) => {
+  await loadPage(page, {
+    style: '.writer, .scrollable { width: 200px; }',
+    body: `
+      <pre id="writer" class="writer"><span class="filler" style="width: 50px"></span></pre>
+      <pre id="target" class="scrollable"><span class="filler" style="width: 400px"></span></pre>
+    `,
+  });
+
+  await applyPolyfill(page, { ...FORCE, selectors: ['[tabindex] + .scrollable'] });
+  await applyPolyfill(page, { ...FORCE, selectors: ['.writer'] });
+
+  await expect(page.locator('#target')).not.toHaveAttribute('tabindex');
+
+  await page.locator('#writer').evaluate((element) => {
+    const span = document.createElement('span');
+    span.className = 'filler';
+    span.style.width = '400px';
+    element.appendChild(span);
+  });
+
+  await expect(page.locator('#writer')).toHaveAttribute('tabindex', '0');
+  await expect(page.locator('#target')).toHaveAttribute('tabindex', '0');
+});
+
+test('shares ownership between the auto and manual entry points', async ({ page }) => {
+  await loadPage(page, {
+    style: 'pre { width: 200px; }',
+    body: '<pre id="code" class="scrollable"><span id="inner" class="filler" style="width: 400px"></span></pre>',
+  });
+  await applyPolyfill(page, FORCE);
+  await page.evaluate(() => window.__polyfill.refresh());
+
+  await loadAutoBundle(page, { 'data-force': 'true', 'data-selectors': '.scrollable' });
+  await page.locator('#code').evaluate((element) => element.classList.remove('scrollable'));
+
+  await expect(page.locator('#code')).toHaveAttribute('tabindex', '0');
+  await expect(page.locator('#code')).toHaveAttribute('data-scroll-focus-polyfill', '');
+});
+
+test('runs focus detection when document.body is not available', async ({ page }) => {
+  await loadPage(page, { body: '<div></div>' });
+  await page.evaluate(() => document.body.remove());
+
+  await applyPolyfill(page);
+
+  expect(await page.evaluate(() => typeof window.__polyfill.refresh)).toBe('function');
 });
 
 test('validates managed selector membership once per mutation batch', async ({ page }) => {
