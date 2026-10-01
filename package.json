@@ -1,6 +1,6 @@
 {
   "name": "scroll-focus-polyfill",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A tiny polyfill for browsers that cannot focus a scrollable element (notably affecting keyboard accessibility of horizontally scrollable <pre> blocks in some environments).",
   "type": "module",
   "main": "./dist/scroll-focus-polyfill.umd.js",

@@ -1,3 +1,5 @@
+## [1.1.0](https://github.com/Th3S4mur41/scroll-focus-polyfill/compare/v1.0.0...v1.1.0) (2026-10-01)
+
 ## 1.0.0 (2026-02-11)
 
 ### Features
