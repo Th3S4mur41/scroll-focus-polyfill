@@ -36,6 +36,10 @@ function getConfigFromScriptTag() {
     config.force = scriptTag.getAttribute('data-force') !== 'false';
   }
 
+  if (scriptTag.hasAttribute('data-observe-resize')) {
+    config.observeResize = scriptTag.getAttribute('data-observe-resize') !== 'false';
+  }
+
   if (scriptTag.hasAttribute('data-selectors')) {
     const selectors = scriptTag.getAttribute('data-selectors');
     config.selectors = selectors.split(',').map((s) => s.trim());

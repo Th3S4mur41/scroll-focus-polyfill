@@ -10,20 +10,63 @@
 const defaultOptions = {
   debug: false,
   force: false,
+  observeResize: true,
   selectors: ['pre'],
 };
 
-let currentOptions = { ...defaultOptions };
+// Marks elements whose tabindex was added by this polyfill, so it can be safely removed
+const MARKER = 'data-scroll-focus-polyfill';
+
+const ownershipKey = Symbol.for('scroll-focus-polyfill.selector-owners');
+let selectorOwners = globalThis[ownershipKey];
+if (!selectorOwners) {
+  selectorOwners = new WeakMap();
+  globalThis[ownershipKey] = selectorOwners;
+}
+
+const attributeOwnershipKey = Symbol.for('scroll-focus-polyfill.attribute-owners');
+let attributeOwners = globalThis[attributeOwnershipKey];
+if (!attributeOwners) {
+  attributeOwners = new WeakMap();
+  globalThis[attributeOwnershipKey] = attributeOwners;
+}
+
+const getMutationNewValues = (mutations) => {
+  const newValues = new Map();
+  const currentValues = new Map();
+
+  for (let index = mutations.length - 1; index >= 0; index -= 1) {
+    const mutation = mutations[index];
+    if (mutation.type !== 'attributes') continue;
+
+    let attributes = currentValues.get(mutation.target);
+    if (!attributes) {
+      attributes = new Map();
+      currentValues.set(mutation.target, attributes);
+    }
+
+    const name = mutation.attributeName;
+    const newValue = attributes.has(name)
+      ? attributes.get(name)
+      : mutation.target.getAttribute(name);
+    newValues.set(mutation, newValue);
+    attributes.set(name, mutation.oldValue);
+  }
+
+  return newValues;
+};
 
 // Logger that only logs when debug is enabled
-const log = (...args) => {
-  if (currentOptions.debug) {
-    console.log('[scroll-focus-polyfill]', ...args);
-  }
+const createLogger = (options) => {
+  return (...args) => {
+    if (options.debug) {
+      console.log('[scroll-focus-polyfill]', ...args);
+    }
+  };
 };
 
 // Check if the polyfill is needed
-function isPolyfillNeeded() {
+function isPolyfillNeeded(log) {
   log('Checking if polyfill is needed...');
 
   // Create a fake scrollable element using pre and code
@@ -43,7 +86,8 @@ function isPolyfillNeeded() {
   test.style.left = '-9999px';
   test.setAttribute('aria-hidden', 'true');
 
-  document.body.appendChild(test);
+  const container = document.body ?? document.documentElement;
+  container.appendChild(test);
 
   // Try focusing it
   test.focus({ preventScroll: true });
@@ -52,83 +96,300 @@ function isPolyfillNeeded() {
   log(`Test element is focusable: ${result}`);
 
   // Cleanup
-  document.body.removeChild(test);
+  container.removeChild(test);
 
   return !result;
 }
 
 // Apply the polyfill
 export function applyPolyfill(options = {}) {
-  // Merge options with defaults
-  currentOptions = { ...defaultOptions, ...options };
+  // Options are per invocation so a later call cannot retarget this instance
+  const settings = { ...defaultOptions, ...options };
+  const log = createLogger(settings);
+  const ownAttributeWrites = new WeakMap();
 
-  log('Applying polyfill with options:', currentOptions);
+  const recordOwnAttributeWrite = (element, name, oldValue, newValue) => {
+    let attributes = ownAttributeWrites.get(element);
+    if (!attributes) {
+      attributes = new Map();
+      ownAttributeWrites.set(element, attributes);
+    }
 
-  if (!currentOptions.force && !isPolyfillNeeded()) {
-    log('Polyfill not needed, skipping');
-    return;
-  }
+    let writes = attributes.get(name);
+    if (!writes) {
+      writes = [];
+      attributes.set(name, writes);
+    }
 
-  if (currentOptions.force) {
-    log('Force option enabled, applying polyfill regardless');
-  }
+    writes.push({ oldValue, newValue });
+  };
 
-  // Make scrollable elements focusable by adding tabindex if needed
-  const makeScrollableFocusable = (element) => {
-    const hasOverflow =
-      element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
+  const setPolyfillAttribute = (element, name, value) => {
+    const oldValue = element.getAttribute(name);
+    if (oldValue === value) return;
+    recordOwnAttributeWrite(element, name, oldValue, value);
+    element.setAttribute(name, value);
+  };
 
-    if (hasOverflow && !element.hasAttribute('tabindex')) {
-      element.setAttribute('tabindex', '0');
-      log('Added tabindex to element:', element.tagName.toLowerCase());
+  const removePolyfillAttribute = (element, name) => {
+    if (!element.hasAttribute(name)) return;
+    recordOwnAttributeWrite(element, name, element.getAttribute(name), null);
+    element.removeAttribute(name);
+  };
+
+  const addOwnedTabindex = (element) => {
+    const markerOwned = !element.hasAttribute(MARKER);
+    const ownership = { tabindexValue: '0', markerValue: markerOwned ? '' : null };
+    attributeOwners.set(element, ownership);
+
+    setPolyfillAttribute(element, 'tabindex', ownership.tabindexValue);
+    if (markerOwned) {
+      setPolyfillAttribute(element, MARKER, ownership.markerValue);
     }
   };
 
-  // Apply to all potentially scrollable elements
-  const applyToExistingElements = () => {
-    log('Applying to existing elements with selectors:', currentOptions.selectors);
+  const removeOwnedTabindex = (element) => {
+    const ownership = attributeOwners.get(element);
+    if (!ownership) return;
 
-    currentOptions.selectors.forEach((selector) => {
+    if (element.getAttribute('tabindex') === ownership.tabindexValue) {
+      removePolyfillAttribute(element, 'tabindex');
+    }
+    if (ownership.markerValue !== null && element.getAttribute(MARKER) === ownership.markerValue) {
+      removePolyfillAttribute(element, MARKER);
+    }
+    attributeOwners.delete(element);
+  };
+
+  const consumeOwnAttributeWrite = (mutation, newValue) => {
+    const attributes = ownAttributeWrites.get(mutation.target);
+    const writes = attributes?.get(mutation.attributeName);
+    if (!writes) return false;
+
+    const writeIndex = writes.findIndex(
+      (write) => write.oldValue === mutation.oldValue && write.newValue === newValue,
+    );
+    if (writeIndex === -1) return false;
+
+    writes.splice(writeIndex, 1);
+    if (writes.length === 0) attributes.delete(mutation.attributeName);
+    if (attributes.size === 0) ownAttributeWrites.delete(mutation.target);
+    return true;
+  };
+
+  log('Applying polyfill with options:', settings);
+
+  if (!settings.force && !isPolyfillNeeded(log)) {
+    log('Polyfill not needed, skipping');
+    return { refresh: () => {} };
+  }
+
+  if (settings.force) {
+    log('Force option enabled, applying polyfill regardless');
+  }
+
+  let rafId = null;
+  // Coalesce bursts of resize notifications into a single pass per frame
+  function scheduleReevaluation() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      log('Re-evaluating elements after resize');
+      applyToExistingElements();
+    });
+  }
+
+  // One observer for all targets: cost scales with element count, not observer count
+  const observedElements = new WeakSet();
+  const managedElements = new Set();
+  const instanceId = Symbol('scroll-focus-polyfill-instance');
+  const resizeObserver =
+    settings.observeResize && typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(scheduleReevaluation)
+      : null;
+
+  const trackSize = (element) => {
+    if (!resizeObserver || observedElements.has(element)) return;
+    observedElements.add(element);
+    resizeObserver.observe(element);
+  };
+
+  // Detached targets would otherwise be retained by the observer
+  const untrackSize = (element) => {
+    if (!resizeObserver || !observedElements.has(element)) return;
+    observedElements.delete(element);
+    resizeObserver.unobserve(element);
+  };
+
+  const releaseOwnership = (element) => {
+    const owners = selectorOwners.get(element);
+    if (!owners) return true;
+
+    owners.delete(instanceId);
+    if (owners.size > 0) return false;
+
+    selectorOwners.delete(element);
+    return true;
+  };
+
+  const stopManaging = (element, pending, clearOwnedAttributes = false) => {
+    pending.delete(element);
+    managedElements.delete(element);
+    untrackSize(element);
+
+    const hasNoOwners = releaseOwnership(element);
+    if (clearOwnedAttributes && hasNoOwners) {
+      removeOwnedTabindex(element);
+    }
+  };
+
+  // Add tabindex when an element overflows, remove it again when it no longer does.
+  // Only attributes added by this polyfill (flagged with MARKER) are ever removed.
+  const makeScrollableFocusable = (element) => {
+    let owners = selectorOwners.get(element);
+    if (!owners) {
+      owners = new Set();
+      selectorOwners.set(element, owners);
+    }
+    owners.add(instanceId);
+    managedElements.add(element);
+    trackSize(element);
+
+    const hasOverflow =
+      element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
+
+    if (hasOverflow) {
+      if (!element.hasAttribute('tabindex')) {
+        addOwnedTabindex(element);
+        log('Added tabindex to element:', element.tagName.toLowerCase());
+      }
+      return;
+    }
+
+    if (attributeOwners.has(element)) {
+      removeOwnedTabindex(element);
+      log('Removed tabindex from element:', element.tagName.toLowerCase());
+    }
+  };
+
+  // Run fn on root and any descendant matching the configured selectors
+  const forEachMatch = (root, fn) => {
+    settings.selectors.forEach((selector) => {
       try {
-        const elements = document.querySelectorAll(selector);
-        log(`Found ${elements.length} elements matching "${selector}"`);
-        elements.forEach(makeScrollableFocusable);
+        if (root.matches?.(selector)) {
+          fn(root);
+        }
+        root.querySelectorAll?.(selector).forEach(fn);
       } catch (e) {
         log('Error with selector', selector, e);
       }
     });
   };
 
+  const matchesAnySelector = (element) =>
+    settings.selectors.some((selector) => {
+      try {
+        return element.matches(selector);
+      } catch (e) {
+        log('Error with selector', selector, e);
+        return false;
+      }
+    });
+
+  // A mutation deep inside an element changes its scrollWidth/scrollHeight without
+  // changing its box, so ResizeObserver stays silent and the ancestors need checking
+  const collectMatchingAncestors = (node, pending) => {
+    let element = node.nodeType === 1 ? node : node.parentElement;
+
+    while (element) {
+      if (matchesAnySelector(element)) {
+        pending.add(element);
+      }
+      element = element.parentElement;
+    }
+  };
+
+  const collectParentScope = (node, scopes) => {
+    const element = node.nodeType === 1 ? node : node.parentElement;
+    const scope = element?.parentElement ?? element;
+    if (scope) scopes.add(scope);
+  };
+
+  // Apply to all potentially scrollable elements
+  const applyToExistingElements = () => {
+    log('Applying to existing elements with selectors:', settings.selectors);
+    forEachMatch(document.documentElement, makeScrollableFocusable);
+  };
+
   // Observe DOM changes and apply polyfill to new elements
   const observer = new MutationObserver((mutations) => {
+    const pending = new Set();
+    const scopes = new Set();
+    let validateManagedElements = false;
+    const mutationNewValues = getMutationNewValues(mutations);
+
     mutations.forEach((mutation) => {
+      // A class or style change on a descendant can make a fixed-size ancestor overflow
+      if (mutation.type === 'attributes') {
+        if (consumeOwnAttributeWrite(mutation, mutationNewValues.get(mutation))) return;
+
+        collectParentScope(mutation.target, scopes);
+        validateManagedElements = true;
+        collectMatchingAncestors(mutation.target, pending);
+        return;
+      }
+
+      validateManagedElements = true;
+      if (mutation.target.nodeType === 1 || mutation.target.nodeType === 9) {
+        scopes.add(mutation.target);
+      } else if (mutation.target.parentElement) {
+        scopes.add(mutation.target.parentElement);
+      }
+      collectParentScope(mutation.target, scopes);
+
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1) {
-          // Element node
-          // Check if the node itself matches any selector
-          currentOptions.selectors.forEach((selector) => {
-            try {
-              if (node.matches?.(selector)) {
-                makeScrollableFocusable(node);
-              }
-            } catch (_e) {
-              // Ignore invalid selectors
-            }
-          });
-
-          // Check children as well
-          if (node.querySelectorAll) {
-            currentOptions.selectors.forEach((selector) => {
-              try {
-                node.querySelectorAll(selector).forEach(makeScrollableFocusable);
-              } catch (_e) {
-                // Ignore invalid selectors
-              }
-            });
-          }
+          collectParentScope(node, scopes);
         }
       });
+
+      mutation.removedNodes.forEach((node) => {
+        if (node.nodeType !== 1) return;
+
+        // Walk every element, not just current matches: an element that stopped matching
+        // before detaching would otherwise stay observed forever
+        stopManaging(node, pending);
+        node.querySelectorAll?.('*').forEach((element) => {
+          stopManaging(element, pending);
+        });
+      });
+
+      collectMatchingAncestors(mutation.target, pending);
     });
+
+    if (validateManagedElements) {
+      managedElements.forEach((element) => {
+        if (!matchesAnySelector(element)) {
+          stopManaging(element, pending, true);
+        }
+      });
+    }
+
+    scopes.forEach((scope) => {
+      if (!scope.isConnected) return;
+      forEachMatch(scope, (element) => pending.add(element));
+    });
+
+    pending.forEach(makeScrollableFocusable);
+  });
+
+  // Start observing before initialization so polyfill writes can be identified
+  observer.observe(document.documentElement, {
+    attributeOldValue: true,
+    attributes: true,
+    characterData: true,
+    childList: true,
+    subtree: true,
   });
 
   // Initialize
@@ -138,11 +399,9 @@ export function applyPolyfill(options = {}) {
     applyToExistingElements();
   }
 
-  // Start observing
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
+  window.addEventListener('resize', scheduleReevaluation);
 
-  log('Polyfill applied and observer started');
+  log('Polyfill applied and observers started');
+
+  return { refresh: applyToExistingElements };
 }

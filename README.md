@@ -81,6 +81,9 @@ You can configure the polyfill using data attributes on the script tag:
 <!-- Custom selectors -->
 <script src="https://unpkg.com/scroll-focus-polyfill" data-selectors="pre, .scrollable, [data-scroll]"></script>
 
+<!-- Disable per-element resize observation -->
+<script src="https://unpkg.com/scroll-focus-polyfill" data-observe-resize="false"></script>
+
 <!-- Combine multiple options -->
 <script src="https://unpkg.com/scroll-focus-polyfill" 
         data-debug="true" 
@@ -101,9 +104,10 @@ applyPolyfill();
 
 // Apply with custom options
 applyPolyfill({
-  debug: false,       // Enable debug logging (default: false)
-  force: false,       // Force polyfill even if browser supports focus (default: false)
-  selectors: ['pre']  // CSS selectors for elements to make focusable (default: ['pre'])
+  debug: false,         // Enable debug logging (default: false)
+  force: false,         // Force polyfill even if browser supports focus (default: false)
+  observeResize: true,  // Re-evaluate elements when their size changes (default: true)
+  selectors: ['pre']    // CSS selectors for elements to make focusable (default: ['pre'])
 });
 
 // Example: Enable debug logging
@@ -162,19 +166,37 @@ applyPolyfill({ force: true });
 
 - **`debug`** (boolean, default: `false`): Enable console logging for debugging
 - **`force`** (boolean, default: `false`): Force the polyfill to apply even if the browser natively supports focusing scrollable elements
+- **`observeResize`** (boolean, default: `true`): Watch matching elements with a `ResizeObserver` so `tabindex` stays correct when an element's own box changes size. Set to `false` on pages with very large numbers of matching elements and call `refresh()` manually instead
 - **`selectors`** (array, default: `['pre']`): CSS selectors for elements that should be made focusable when they have scrollable content
+
+## Manual refresh
+
+`applyPolyfill()` returns a handle with a `refresh()` method that re-evaluates every matching element. This is useful when `observeResize` is disabled, or after a layout change the polyfill cannot detect:
+
+```javascript
+import { applyPolyfill } from 'scroll-focus-polyfill/fn';
+
+const polyfill = applyPolyfill({ observeResize: false });
+
+// After your own layout change (panel toggle, split view drag, etc.)
+polyfill.refresh();
+```
 
 ## How it Works
 
 1. **Detection**: The polyfill checks if the browser needs it by testing if a `<pre>` element with scrollable content can receive focus
 2. **Application**: If needed (or if `force: true`), it adds `tabindex="0"` to matching elements that have scrollable content
-3. **Observation**: It monitors the DOM for new elements and applies the fix automatically
+3. **Observation**: It monitors the DOM for new elements and applies the fix automatically. Because content added, edited or restyled *inside* a matching element changes its `scrollWidth`/`scrollHeight` without changing its own box, every mutation also re-evaluates its matching ancestors. Child list, `characterData` and attribute changes are all observed, so text edits and `class`/`style` changes are covered
+4. **Re-evaluation**: It also re-checks elements when sizes change, adding `tabindex="0"` when a scrollbar appears and removing it again when the content no longer overflows. A single `ResizeObserver` watches each matching element, so changes caused by a sibling, sidebar or grid track are detected even when the viewport stays the same size. Elements removed from the DOM are unobserved automatically
+
+Elements that already had a `tabindex` before the polyfill ran are never modified. Internal ownership state tracks attributes added by the polyfill; the `data-scroll-focus-polyfill` marker alone is never treated as proof of ownership. The polyfill removes its own `tabindex` and marker values only while they remain unchanged, so application-managed values are preserved.
 
 ## Browser Support
 
 This polyfill works in all modern browsers and will only activate if needed. It uses:
 
 - `MutationObserver` for DOM monitoring
+- `ResizeObserver` (when available) and the `resize` event for size changes
 - Standard DOM APIs for element detection
 
 ## Contributing

@@ -1,16 +1,16 @@
 /**
- * Simple test to verify the build output
+ * Packaging smoke test: verifies the build emits every artifact the package
+ * advertises. Runtime behaviour is covered by the Playwright suite in test/e2e.
  */
 
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, '..');
+const distDir = join(rootDir, 'dist');
 
-// Test that all expected build files exist
-const distDir = join(__dirname, '..', 'dist');
 const expectedFiles = [
   // Default (auto-execute) version
   'scroll-focus-polyfill.js',
@@ -22,48 +22,53 @@ const expectedFiles = [
   'scroll-focus-polyfill.fn.umd.js',
 ];
 
-console.log('Testing build outputs...\n');
-
 let allTestsPassed = true;
 
-expectedFiles.forEach(file => {
-  try {
-    const filePath = join(distDir, file);
-    const content = readFileSync(filePath, 'utf-8');
-    
-    if (content.length > 0) {
-      console.log(`✓ ${file} exists and has content (${content.length} bytes)`);
-      
-      // Check that the file contains expected function names
-      if (content.includes('applyPolyfill')) {
-        console.log(`  ✓ Contains applyPolyfill function`);
-      } else {
-        console.log(`  ✗ Missing applyPolyfill function`);
-        allTestsPassed = false;
-      }
-      
-      // Check for polyfill logic (check for 'tabindex' and 'selectors' or 'pre')
-      if (content.includes('tabindex') && (content.includes('selectors') || content.includes('pre'))) {
-        console.log(`  ✓ Contains polyfill logic`);
-      } else {
-        console.log(`  ✗ Missing expected polyfill logic`);
-        allTestsPassed = false;
-      }
-    } else {
-      console.log(`✗ ${file} is empty`);
-      allTestsPassed = false;
-    }
-  } catch (error) {
-    console.log(`✗ ${file} is missing or unreadable`);
+const check = (label, condition) => {
+  console.log(`${condition ? '✓' : '✗'} ${label}`);
+  if (!condition) {
     allTestsPassed = false;
   }
-  console.log('');
+};
+
+const readIfPresent = (path) => {
+  try {
+    return readFileSync(path, 'utf-8');
+  } catch {
+    return null;
+  }
+};
+
+console.log('Testing build outputs...\n');
+
+expectedFiles.forEach((file) => {
+  const content = readIfPresent(join(distDir, file));
+
+  check(`${file} exists and has content`, content !== null && content.length > 0);
+  check(`${file}.map exists`, readIfPresent(join(distDir, `${file}.map`)) !== null);
 });
 
+console.log('');
+
+// Every path advertised in package.json must actually be published
+const pkg = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf-8'));
+const entryPaths = new Set([pkg.main, pkg.module, pkg.browser]);
+
+Object.values(pkg.exports).forEach((entry) => {
+  Object.values(entry).forEach((path) => entryPaths.add(path));
+});
+
+entryPaths.forEach((path) => {
+  const content = readIfPresent(join(rootDir, path));
+  check(`package.json entry ${path} resolves to a built file`, content !== null);
+});
+
+console.log('');
+
 if (allTestsPassed) {
-  console.log('✅ All tests passed!');
+  console.log('✅ All packaging checks passed!');
   process.exit(0);
 } else {
-  console.log('❌ Some tests failed');
+  console.log('❌ Some packaging checks failed');
   process.exit(1);
 }
